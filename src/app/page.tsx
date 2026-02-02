@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   const data = await getDashboardData();
 
   return (
-    <AppShell>
+    <AppShell balance={data.balance} budgetMode={data.budget_mode}>
       <div className="flex flex-col gap-4 pb-24">
         <BalanceCard balance={data.balance} />
 

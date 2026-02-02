@@ -1,7 +1,5 @@
-"use client";
-
-import { Header } from "@/components/layout/header";
-import { MobileNav } from "@/components/layout/mobile-nav";
+import { getBalanceData } from "@/actions/dashboard";
+import { AppShellClient } from "@/components/layout/app-shell-client";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -13,21 +11,23 @@ interface AppShellProps {
   };
 }
 
-export function AppShell({
-  children,
-  balance = 0,
-  budgetMode = { active: false, daily_limit: 0, today_remaining: 0 },
-}: AppShellProps) {
+export async function AppShell({ children, balance, budgetMode }: AppShellProps) {
+  // If balance wasn't explicitly provided, fetch it
+  let resolvedBalance = balance;
+  let resolvedBudgetMode = budgetMode;
+
+  if (resolvedBalance === undefined) {
+    const data = await getBalanceData();
+    resolvedBalance = data.balance;
+    resolvedBudgetMode = data.budget_mode;
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header balance={balance} budgetMode={budgetMode} />
-
-      {/* Main content area */}
-      <main className="pb-20 md:pb-0 md:pl-60">
-        <div className="mx-auto max-w-2xl">{children}</div>
-      </main>
-
-      <MobileNav balance={balance} budgetMode={budgetMode} />
-    </div>
+    <AppShellClient
+      balance={resolvedBalance}
+      budgetMode={resolvedBudgetMode ?? { active: false, daily_limit: 0, today_remaining: 0 }}
+    >
+      {children}
+    </AppShellClient>
   );
 }

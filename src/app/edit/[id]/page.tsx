@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { getTransaction } from "@/actions/transactions";
 import { getCategories } from "@/actions/categories";
-import { getDashboardData } from "@/actions/dashboard";
 
 export default async function EditTransactionPage({
   params,
@@ -12,10 +11,9 @@ export default async function EditTransactionPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [transaction, categories, dashboard] = await Promise.all([
+  const [transaction, categories] = await Promise.all([
     getTransaction(id),
     getCategories({ include_subcategories: false }),
-    getDashboardData(),
   ]);
 
   if (!transaction) {
@@ -39,10 +37,7 @@ export default async function EditTransactionPage({
   };
 
   return (
-    <AppShell
-      balance={dashboard.balance}
-      budgetMode={dashboard.budget_mode}
-    >
+    <AppShell>
       <div className="px-4 pt-4">
         <PageHeader title="Edit Transaction" backHref="/transactions" />
         <div className="mt-4">

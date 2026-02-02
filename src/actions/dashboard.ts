@@ -9,6 +9,53 @@ import type {
   BudgetModeSettings,
 } from "@/types";
 
+export async function getBalanceData(): Promise<{
+  balance: number;
+  budget_mode: { active: boolean; daily_limit: number; today_remaining: number };
+}> {
+  const supabase = createServerClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  const [allTxResult, todayTxResult, settingsResult] = await Promise.all([
+    supabase.from("transactions").select("type, amount"),
+    supabase.from("transactions").select("type, amount").eq("transaction_date", today).eq("type", "expense"),
+    supabase.from("settings").select("key, value").in("key", ["initial_balance", "budget_mode"]),
+  ]);
+
+  let initialBalance = 0;
+  let budgetModeSettings: BudgetModeSettings = { active: false, daily_limit: 500, activated_at: null };
+
+  for (const setting of settingsResult.data ?? []) {
+    if (setting.key === "initial_balance") {
+      initialBalance = Number((setting.value as { amount: number })?.amount ?? 0);
+    } else if (setting.key === "budget_mode") {
+      budgetModeSettings = setting.value as BudgetModeSettings;
+    }
+  }
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  for (const tx of allTxResult.data ?? []) {
+    const amt = Number(tx.amount);
+    if (tx.type === "income") totalIncome += amt;
+    else totalExpense += amt;
+  }
+
+  let todayExpense = 0;
+  for (const tx of todayTxResult.data ?? []) {
+    todayExpense += Number(tx.amount);
+  }
+
+  return {
+    balance: initialBalance + totalIncome - totalExpense,
+    budget_mode: {
+      active: budgetModeSettings.active,
+      daily_limit: budgetModeSettings.daily_limit,
+      today_remaining: budgetModeSettings.daily_limit - todayExpense,
+    },
+  };
+}
+
 export async function getDashboardData(): Promise<{
   balance: number;
   today_expense: number;
