@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/lock", "/api/auth/verify", "/api/auth/grant"];
+const PUBLIC_PATHS = ["/lock", "/api/auth/verify", "/api/auth/grant", "/api/mobile/"];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return true;
