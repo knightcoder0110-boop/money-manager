@@ -3,7 +3,8 @@ import { EventWithDetails, EventDetail, CreateEventInput, ActionResult, Event } 
 
 export async function getEvents(): Promise<EventWithDetails[]> {
   const { data } = await api.get('/events');
-  return data;
+  const events = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+  return events;
 }
 
 export async function getEvent(id: string): Promise<EventDetail> {

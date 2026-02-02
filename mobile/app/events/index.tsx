@@ -24,10 +24,12 @@ export default function EventsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
 
-  const { data: events, isLoading, refetch, isRefetching } = useQuery({
+  const { data: rawEvents, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['events'],
     queryFn: getEvents,
   });
+
+  const events = Array.isArray(rawEvents) ? rawEvents : [];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -48,14 +50,14 @@ export default function EventsScreen() {
           <View style={{ gap: 12 }}>
             {[1, 2, 3].map((i) => <Skeleton key={i} height={100} />)}
           </View>
-        ) : events?.length === 0 ? (
+        ) : events.length === 0 ? (
           <Card>
             <Text variant="body" color={colors.textTertiary} align="center" style={{ padding: 32 }}>
               No events yet. Create one to start tracking trip expenses.
             </Text>
           </Card>
         ) : (
-          events?.map((event: EventWithDetails, index: number) => {
+          events.map((event: EventWithDetails, index: number) => {
             const now = new Date();
             const endDate = new Date(event.end_date);
             const isActive = endDate >= now;

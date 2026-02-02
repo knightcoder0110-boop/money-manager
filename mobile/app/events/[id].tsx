@@ -93,14 +93,13 @@ export default function EventDetailScreen() {
                 <Text variant="caption" color={colors.textSecondary} style={{ marginLeft: 4, marginBottom: 8 }}>
                   BREAKDOWN
                 </Text>
-                {data.category_breakdown.map((cat) => (
-                  <Card key={cat.category_id} style={{ marginBottom: 8 }}>
+                {data.category_breakdown.map((cat: any, index: number) => (
+                  <Card key={cat.category_name ?? index} style={{ marginBottom: 8 }}>
                     <View style={styles.catRow}>
-                      <Text style={{ fontSize: 20 }}>{cat.category_icon}</Text>
                       <View style={{ flex: 1 }}>
                         <Text variant="bodyMedium">{cat.category_name}</Text>
                       </View>
-                      <Text variant="amount" color={colors.expense}>{formatCurrency(cat.total)}</Text>
+                      <Text variant="amount" color={colors.expense}>{formatCurrency(cat.amount ?? cat.total ?? 0)}</Text>
                     </View>
                   </Card>
                 ))}
