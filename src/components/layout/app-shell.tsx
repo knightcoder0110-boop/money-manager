@@ -27,7 +27,7 @@ export function AppShell({
         <div className="mx-auto max-w-2xl">{children}</div>
       </main>
 
-      <MobileNav />
+      <MobileNav balance={balance} budgetMode={budgetMode} />
     </div>
   );
 }

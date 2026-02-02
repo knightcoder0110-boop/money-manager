@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Settings,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { NAV_ITEMS, MORE_MENU_ITEMS } from "@/lib/constants";
 import {
   Sheet,
@@ -38,7 +38,16 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Settings,
 };
 
-export function MobileNav() {
+interface MobileNavProps {
+  balance?: number;
+  budgetMode?: {
+    active: boolean;
+    daily_limit: number;
+    today_remaining: number;
+  };
+}
+
+export function MobileNav({ balance = 0, budgetMode }: MobileNavProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -138,14 +147,29 @@ export function MobileNav() {
       </nav>
 
       {/* Desktop sidebar nav */}
-      <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 md:border-r md:border-border md:bg-card">
+      <aside className="hidden md:flex md:w-60 md:flex-col md:fixed md:inset-y-0 md:z-50 md:border-r md:border-border md:bg-card">
         <div className="flex items-center gap-2 px-6 py-4 border-b border-border">
           <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
             <span className="text-sm font-bold text-primary-foreground">M</span>
           </div>
           <span className="font-semibold text-foreground">Money Manager</span>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <div className="px-4 py-3 border-b border-border">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Balance</span>
+          <p className={cn(
+            "text-lg font-bold font-mono tabular-nums",
+            balance >= 0 ? "text-green-400" : "text-red-400"
+          )}>
+            {formatCurrency(balance)}
+          </p>
+          {budgetMode?.active && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] font-semibold text-red-400 uppercase">Budget Mode</span>
+            </div>
+          )}
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.filter((i) => i.label !== "More" && i.label !== "Add").map(
             (item) => {
               const Icon = ICON_MAP[item.icon];
