@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const TOKEN_KEY = 'app_session_token';
 const SERVER_URL_KEY = 'server_url';
+const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL || '';
 
 interface AuthStore {
   isLocked: boolean;
@@ -23,7 +24,7 @@ interface AuthStore {
 export const useAuthStore = create<AuthStore>((set, get) => ({
   isLocked: true,
   token: null,
-  serverUrl: '',
+  serverUrl: DEFAULT_SERVER_URL,
   isLoading: true,
   hasPassword: false,
 
@@ -35,7 +36,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       ]);
       set({
         token,
-        serverUrl: serverUrl || '',
+        serverUrl: serverUrl || DEFAULT_SERVER_URL,
         isLocked: !token,
         isLoading: false,
       });
