@@ -4,6 +4,7 @@ import type { TransactionWithDetails } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TransactionItem } from "@/components/transactions/transaction-item";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 interface RecentTransactionsProps {
@@ -11,6 +12,8 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
+  const router = useRouter();
+
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between pb-0">
@@ -44,6 +47,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
               <TransactionItem
                 key={transaction.id}
                 transaction={transaction}
+                onClick={(t) => router.push(`/edit/${t.id}`)}
               />
             ))}
           </div>
