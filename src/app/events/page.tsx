@@ -1,6 +1,6 @@
 import Link from "next/link";
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import EventCard from "@/components/events/event-card";
 import { getEvents } from "@/actions/events";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ export default async function EventsPage() {
     <AppShell>
       <PageHeader
         title="Events"
-        action={
+        rightAction={
           <Link href="/events/new">
             <Button size="sm">
               <Plus className="h-4 w-4 mr-1" />

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import GeneralSettings from "@/components/settings/general-settings";
 import BudgetModeSettings from "@/components/settings/budget-mode-settings";
 import { getAllSettings } from "@/actions/settings";

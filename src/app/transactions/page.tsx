@@ -1,8 +1,7 @@
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
-import TransactionFilters from "@/components/transactions/transaction-filters";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { getTransactions } from "@/actions/transactions";
-import { getCategories } from "@/actions/categories";
+
 import { getCurrentMonth, getMonthDateRange } from "@/lib/utils";
 import type { TransactionType, Necessity } from "@/types";
 import TransactionsPageClient from "./transactions-page-client";
@@ -42,19 +41,16 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const page = Math.max(1, parseInt(params.page || "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
 
-  const [{ data: transactions, count }, categories] = await Promise.all([
-    getTransactions({
-      type,
-      category_id,
-      necessity,
-      date_from,
-      date_to,
-      search,
-      limit: PAGE_SIZE,
-      offset,
-    }),
-    getCategories({ include_subcategories: true }),
-  ]);
+  const { data: transactions, count } = await getTransactions({
+    type,
+    category_id,
+    necessity,
+    date_from,
+    date_to,
+    search,
+    limit: PAGE_SIZE,
+    offset,
+  });
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
 
@@ -62,14 +58,6 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
     <AppShell>
       <PageHeader title="Transactions" />
       <div className="mx-auto max-w-2xl">
-        <TransactionFilters
-          categories={categories}
-          currentType={type}
-          currentCategory={category_id}
-          currentNecessity={necessity}
-          currentDateFrom={date_from}
-          currentDateTo={date_to}
-        />
         <TransactionsPageClient
           initialTransactions={transactions}
           totalCount={count}

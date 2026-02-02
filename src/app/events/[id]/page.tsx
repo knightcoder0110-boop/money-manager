@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import EventBreakdown from "@/components/events/event-breakdown";
 import EventDetailActions from "./event-detail-actions";
 import { getEventWithTransactions } from "@/actions/events";
@@ -25,7 +25,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       <PageHeader
         title={event.name}
         backHref="/events"
-        action={<EventDetailActions eventId={event.id} />}
+        rightAction={<EventDetailActions eventId={event.id} />}
       />
       <div className="p-4 space-y-6">
         {/* Event Info */}

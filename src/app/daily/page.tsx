@@ -1,5 +1,5 @@
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import { getDailySpending } from "@/actions/dashboard";
 import { getCurrentMonth } from "@/lib/utils";
 import DailyPageClient from "./daily-page-client";

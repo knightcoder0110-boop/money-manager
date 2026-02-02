@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import AppShell from "@/components/layout/app-shell";
-import PageHeader from "@/components/layout/page-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
 import CategoryDeepDive from "./category-deep-dive";
 import { getCategoryBreakdown } from "@/actions/analytics";
 import { getTransactions } from "@/actions/transactions";
