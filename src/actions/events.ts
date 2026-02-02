@@ -26,6 +26,52 @@ export async function getEvents(options?: {
   return { data: (data as Event[]) ?? [], count: count ?? 0 };
 }
 
+export async function getEventsWithTotals(options?: {
+  limit?: number;
+  offset?: number;
+}): Promise<{ data: (Event & { total_cost: number })[]; count: number }> {
+  const supabase = createServerClient();
+  const limit = options?.limit ?? 50;
+  const offset = options?.offset ?? 0;
+
+  const { data: events, count, error } = await supabase
+    .from("events")
+    .select("*", { count: "exact" })
+    .order("start_date", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !events) {
+    console.error("getEventsWithTotals error:", error?.message);
+    return { data: [], count: 0 };
+  }
+
+  const eventIds = events.map((e) => e.id);
+
+  if (eventIds.length === 0) {
+    return { data: [], count: count ?? 0 };
+  }
+
+  // Fetch expense totals per event in one query
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("event_id, amount, type")
+    .in("event_id", eventIds)
+    .eq("type", "expense");
+
+  const totalsMap = new Map<string, number>();
+  for (const tx of transactions ?? []) {
+    const prev = totalsMap.get(tx.event_id!) ?? 0;
+    totalsMap.set(tx.event_id!, prev + Number(tx.amount));
+  }
+
+  const result = (events as Event[]).map((event) => ({
+    ...event,
+    total_cost: totalsMap.get(event.id) ?? 0,
+  }));
+
+  return { data: result, count: count ?? 0 };
+}
+
 export async function getEventWithTransactions(id: string): Promise<{
   event: Event | null;
   transactions: Transaction[];
