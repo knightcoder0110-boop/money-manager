@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useThemeColors, useColorSchemeValue } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
@@ -52,6 +53,9 @@ function MenuIcon({ color, size = 24 }: { color: string; size?: number }) {
 export default function TabLayout() {
   const colors = useThemeColors();
   const scheme = useColorSchemeValue();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomPadding;
 
   return (
     <Tabs
@@ -64,8 +68,8 @@ export default function TabLayout() {
           backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.tabBar,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          height: tabBarHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
           elevation: 0,
         },
