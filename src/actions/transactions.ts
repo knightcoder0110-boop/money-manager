@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@/lib/supabase/server";
-import type { Transaction } from "@/types";
+import type { Transaction, TransactionWithDetails } from "@/types";
 
 export async function getTransactions(filters?: {
   type?: "expense" | "income";
@@ -16,7 +16,7 @@ export async function getTransactions(filters?: {
   limit?: number;
   offset?: number;
 }): Promise<{
-  data: Transaction[];
+  data: TransactionWithDetails[];
   count: number;
 }> {
   const supabase = createServerClient();
@@ -25,7 +25,7 @@ export async function getTransactions(filters?: {
 
   let query = supabase
     .from("transactions")
-    .select("*", { count: "exact" })
+    .select("*, categories(id, name, icon, color, is_essential, is_income), subcategories(id, name), events(id, name)", { count: "exact" })
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -62,7 +62,17 @@ export async function getTransactions(filters?: {
     return { data: [], count: 0 };
   }
 
-  return { data: (data as Transaction[]) ?? [], count: count ?? 0 };
+  const enriched: TransactionWithDetails[] = (data ?? []).map((row: Record<string, unknown>) => {
+    const { categories, subcategories, events, ...txn } = row;
+    return {
+      ...txn,
+      category: categories as TransactionWithDetails["category"],
+      subcategory: (subcategories as TransactionWithDetails["subcategory"]) ?? null,
+      event: (events as TransactionWithDetails["event"]) ?? null,
+    } as TransactionWithDetails;
+  });
+
+  return { data: enriched, count: count ?? 0 };
 }
 
 export async function getTransaction(id: string): Promise<Transaction | null> {

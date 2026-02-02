@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { getTransactions } from "@/actions/transactions";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from "@/lib/constants";
-import type { Transaction, TransactionType, Necessity } from "@/types";
+import { TRANSACTION_TYPE_COLORS } from "@/lib/constants";
+import type { TransactionWithDetails, TransactionType, Necessity } from "@/types";
 
 interface TransactionsPageClientProps {
-  initialTransactions: Transaction[];
+  initialTransactions: TransactionWithDetails[];
   totalCount: number;
   currentPage: number;
   totalPages: number;
@@ -30,7 +31,8 @@ export default function TransactionsPageClient({
   pageSize,
   filters,
 }: TransactionsPageClientProps) {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const router = useRouter();
+  const [transactions, setTransactions] = useState<TransactionWithDetails[]>(initialTransactions);
   const [page, setPage] = useState(currentPage);
   const [isPending, startTransition] = useTransition();
   const hasMore = page < totalPages;
@@ -49,7 +51,7 @@ export default function TransactionsPageClient({
   }
 
   // Group transactions by date
-  const grouped = transactions.reduce<Record<string, Transaction[]>>((acc, txn) => {
+  const grouped = transactions.reduce<Record<string, TransactionWithDetails[]>>((acc, txn) => {
     const date = txn.transaction_date;
     if (!acc[date]) acc[date] = [];
     acc[date].push(txn);
@@ -82,40 +84,9 @@ export default function TransactionsPageClient({
             {formatDate(date)}
           </div>
           <div className="divide-y divide-zinc-800">
-            {grouped[date].map((txn) => {
-              const typeColor = TRANSACTION_TYPE_COLORS[txn.type];
-              const necessityColor = txn.necessity
-                ? NECESSITY_COLORS[txn.necessity]
-                : null;
-
-              return (
-                <div
-                  key={txn.id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-zinc-900/50 transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zinc-100 truncate">
-                      {txn.note || (txn.type === "expense" ? "Expense" : "Income")}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {txn.necessity && necessityColor && (
-                        <span
-                          className={`text-xs px-1.5 py-0.5 rounded ${necessityColor.bg} ${necessityColor.text}`}
-                        >
-                          {txn.necessity}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span
-                    className={`text-sm font-mono tabular-nums font-medium ${typeColor.text}`}
-                  >
-                    {typeColor.prefix}
-                    {formatCurrency(txn.amount)}
-                  </span>
-                </div>
-              );
-            })}
+            {grouped[date].map((txn) => (
+              <TransactionRow key={txn.id} txn={txn} onClick={() => router.push(`/edit/${txn.id}`)} />
+            ))}
           </div>
         </div>
       ))}
@@ -131,6 +102,53 @@ export default function TransactionsPageClient({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function TransactionRow({ txn, onClick }: { txn: TransactionWithDetails; onClick: () => void }) {
+  const typeColor = TRANSACTION_TYPE_COLORS[txn.type];
+  const categoryName = txn.category?.name ?? (txn.type === "expense" ? "Expense" : "Income");
+  const categoryIcon = txn.category?.icon;
+  const categoryColor = txn.category?.color;
+
+  const secondaryParts: string[] = [];
+  if (txn.subcategory?.name) secondaryParts.push(txn.subcategory.name);
+  if (txn.event?.name) secondaryParts.push(txn.event.name);
+  if (txn.note) secondaryParts.push(txn.note);
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-900/50 transition-colors cursor-pointer"
+      onClick={onClick}
+    >
+      {/* Category icon */}
+      <div
+        className="flex items-center justify-center size-8 rounded-full text-sm shrink-0"
+        style={{ backgroundColor: categoryColor ? `${categoryColor}20` : "rgb(39 39 42)" }}
+      >
+        {categoryIcon ?? categoryName.charAt(0)}
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-sm font-medium text-zinc-100 truncate">
+            {categoryName}
+          </p>
+          <span
+            className={`text-sm font-mono tabular-nums font-medium shrink-0 ${typeColor.text}`}
+          >
+            {typeColor.prefix}
+            {formatCurrency(txn.amount)}
+          </span>
+        </div>
+        {secondaryParts.length > 0 && (
+          <p className="text-xs text-zinc-500 truncate mt-0.5">
+            {secondaryParts.join(" · ")}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
