@@ -14,6 +14,7 @@ import { NecessityBarChart } from "@/components/charts/necessity-bar-chart";
 import { DailyBarChart } from "@/components/charts/daily-bar-chart";
 import { MonthlyTrendChart } from "@/components/charts/monthly-trend-chart";
 import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -179,7 +180,8 @@ export function MonthlyPageClient({
                 <div key={cat.id} className="space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">
-                      {cat.icon} {cat.name}
+                      <CategoryIcon icon={cat.icon} size={16} className="inline-block mr-1 align-text-bottom" />
+                      {cat.name}
                     </span>
                     <span className="font-mono tabular-nums text-sm text-muted-foreground">
                       {formatCurrency(cat.total)}

@@ -30,7 +30,7 @@ export default async function CategoryDetailPage({ params }: CategoryDetailPageP
   return (
     <AppShell>
       <PageHeader
-        title={`${category.icon} ${category.name}`}
+        title={category.name}
         backHref="/categories"
       />
       <CategoryDeepDive

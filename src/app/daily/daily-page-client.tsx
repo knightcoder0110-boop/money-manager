@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils";
 import { TRANSACTION_TYPE_COLORS } from "@/lib/constants";
 import type { DailySpending, TransactionWithDetails } from "@/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -238,7 +239,7 @@ export default function DailyPageClient({
                       className="flex items-center justify-center size-8 rounded-full text-sm shrink-0"
                       style={{ backgroundColor: categoryColor ? `${categoryColor}20` : "rgb(39 39 42)" }}
                     >
-                      {categoryIcon ?? categoryName.charAt(0)}
+                      {categoryIcon ? <CategoryIcon icon={categoryIcon} size={16} /> : categoryName.charAt(0)}
                     </div>
 
                     {/* Details */}

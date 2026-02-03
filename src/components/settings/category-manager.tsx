@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { CategoryIcon } from "@/components/icons/category-icon";
+import { IconPicker } from "@/components/icons/icon-picker";
 
 interface CategoryManagerProps {
   categories: CategoryWithSubs[];
@@ -194,7 +196,7 @@ export default function CategoryManager({ categories }: CategoryManagerProps) {
                   className="w-3 h-3 rounded-full shrink-0"
                   style={{ backgroundColor: cat.color }}
                 />
-                <span className="text-lg">{cat.icon}</span>
+                <CategoryIcon icon={cat.icon} size={20} />
                 <span className="font-medium">{cat.name}</span>
                 {cat.is_essential && (
                   <Badge variant="secondary" className="text-xs">Essential</Badge>
@@ -284,8 +286,8 @@ export default function CategoryManager({ categories }: CategoryManagerProps) {
               <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Food" />
             </div>
             <div className="space-y-2">
-              <Label>Icon (emoji)</Label>
-              <Input value={newIcon} onChange={(e) => setNewIcon(e.target.value)} placeholder="e.g. 🍔" />
+              <Label>Icon</Label>
+              <IconPicker value={newIcon} onChange={setNewIcon} />
             </div>
             <div className="space-y-2">
               <Label>Color</Label>
@@ -332,8 +334,8 @@ export default function CategoryManager({ categories }: CategoryManagerProps) {
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Icon (emoji)</Label>
-              <Input value={editIcon} onChange={(e) => setEditIcon(e.target.value)} />
+              <Label>Icon</Label>
+              <IconPicker value={editIcon} onChange={setEditIcon} />
             </div>
             <div className="space-y-2">
               <Label>Color</Label>

@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 interface CategoryPieChartProps {
   data: CategoryBreakdownItem[];
@@ -47,8 +48,8 @@ function CustomTooltip({ active, payload }: PieTooltipProps) {
   const item = payload[0].payload;
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
-      <p className="text-sm font-medium">
-        {item.category_icon} {item.category_name}
+      <p className="text-sm font-medium flex items-center gap-1">
+        <CategoryIcon icon={item.category_icon} size={14} /> {item.category_name}
       </p>
       <p className="text-sm font-mono text-muted-foreground">
         {formatCurrency(item.total)} ({item.percent.toFixed(1)}%)

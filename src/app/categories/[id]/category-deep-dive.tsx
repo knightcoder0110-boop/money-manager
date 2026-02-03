@@ -8,6 +8,7 @@ import { formatCurrency, getMonthDateRange } from "@/lib/utils";
 import { TRANSACTION_TYPE_COLORS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 interface CategoryDeepDiveProps {
   category: CategoryWithSubs;
@@ -94,7 +95,7 @@ export default function CategoryDeepDive({
               <div key={item.id} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span>{item.icon}</span>
+                    <CategoryIcon icon={item.icon} size={16} />
                     <span>{item.name}</span>
                     <span className="text-muted-foreground text-xs">
                       ({item.transaction_count} txns)

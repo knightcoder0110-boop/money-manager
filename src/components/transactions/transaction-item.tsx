@@ -3,6 +3,7 @@
 import { cn, formatCurrency, formatDateShort } from "@/lib/utils";
 import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from "@/lib/constants";
 import type { TransactionWithDetails } from "@/types";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 interface TransactionItemProps {
   transaction: TransactionWithDetails;
@@ -34,7 +35,7 @@ export function TransactionItem({
         className="flex items-center justify-center size-10 rounded-xl text-lg"
         style={{ backgroundColor: transaction.category?.color ? `${transaction.category.color}20` : undefined }}
       >
-        {transaction.category?.icon ?? "?"}
+        {transaction.category?.icon ? <CategoryIcon icon={transaction.category.icon} size={20} /> : "?"}
       </div>
 
       {/* Details */}

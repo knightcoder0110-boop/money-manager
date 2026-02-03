@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
+import { CategoryIcon } from "@/components/icons/category-icon";
 import { useState } from "react";
 
 export interface TransactionFilters {
@@ -81,7 +82,7 @@ export function TransactionFiltersBar({
             <SelectItem value="all">All categories</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.id}>
-                {cat.icon} {cat.name}
+                <span className="inline-flex items-center gap-1"><CategoryIcon icon={cat.icon} size={14} /> {cat.name}</span>
               </SelectItem>
             ))}
           </SelectContent>

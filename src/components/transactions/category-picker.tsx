@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { CategoryWithSubs } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CategoryIcon } from "@/components/icons/category-icon";
 
 interface CategoryPickerProps {
   categories: CategoryWithSubs[];
@@ -53,7 +54,7 @@ export function CategoryPicker({
                 : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
-            <span className="text-2xl leading-none">{cat.icon}</span>
+            <CategoryIcon icon={cat.icon} size={24} />
             <span className="text-[11px] font-medium leading-tight truncate w-full">
               {cat.name}
             </span>
