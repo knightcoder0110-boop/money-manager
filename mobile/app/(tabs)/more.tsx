@@ -6,13 +6,14 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Text } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
+import { Receipt, CalendarDays, FolderOpen, BarChart3, Settings } from 'lucide-react-native';
 
 const MENU_ITEMS = [
-  { label: 'Transactions', route: '/transactions', description: 'All transactions', emoji: '📋' },
-  { label: 'Events', route: '/events', description: 'Trips & events', emoji: '🎉' },
-  { label: 'Categories', route: '/categories', description: 'Manage categories', emoji: '📂' },
-  { label: 'Analytics', route: '/analytics', description: 'Charts & insights', emoji: '📊' },
-  { label: 'Settings', route: '/settings', description: 'App preferences', emoji: '⚙️' },
+  { label: 'Transactions', route: '/transactions', description: 'All transactions', icon: Receipt },
+  { label: 'Events', route: '/events', description: 'Trips & events', icon: CalendarDays },
+  { label: 'Categories', route: '/categories', description: 'Manage categories', icon: FolderOpen },
+  { label: 'Analytics', route: '/analytics', description: 'Charts & insights', icon: BarChart3 },
+  { label: 'Settings', route: '/settings', description: 'App preferences', icon: Settings },
 ];
 
 const CARD_GAP = 12;
@@ -49,7 +50,7 @@ export default function MoreScreen() {
                   },
                 ]}
               >
-                <Text style={{ fontSize: 32 }}>{item.emoji}</Text>
+                <item.icon size={28} color={colors.accent} strokeWidth={1.8} />
                 <Text variant="h3" style={{ marginTop: 8 }}>{item.label}</Text>
                 <Text variant="bodySm" color={colors.textSecondary}>{item.description}</Text>
               </Pressable>

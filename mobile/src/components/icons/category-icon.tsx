@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 
 /** Maps Lucide icon key strings to components */
-const KEY_ICON_MAP: Record<string, LucideIcon> = {
+export const KEY_ICON_MAP: Record<string, LucideIcon> = {
   home: Home,
   'utensils-crossed': UtensilsCrossed,
   car: Car,

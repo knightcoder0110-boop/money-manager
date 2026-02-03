@@ -110,6 +110,10 @@ export default function RootLayout() {
               <Stack.Screen name="events/[id]" />
               <Stack.Screen name="categories/index" />
               <Stack.Screen name="categories/[id]" />
+              <Stack.Screen
+                name="categories/edit"
+                options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
+              />
               <Stack.Screen name="analytics/index" />
               <Stack.Screen name="settings/index" />
             </Stack>
