@@ -6,3 +6,4 @@ export { Badge } from './Badge';
 export { Skeleton, SkeletonCard } from './Skeleton';
 export { AmountDisplay } from './AmountDisplay';
 export { IconButton } from './IconButton';
+export { DatePicker } from './DatePicker';

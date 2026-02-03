@@ -5,14 +5,15 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { Text, Card, Button, IconButton } from '../../src/components/ui';
+import { Text, Card, Button, IconButton, DatePicker } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
 import { getTransaction, updateTransaction, deleteTransaction } from '../../src/api/transactions';
 import { getCategories } from '../../src/api/categories';
-import { formatCurrency } from '../../src/utils/format';
+import { formatCurrency, getToday } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
 import { Necessity, CategoryWithSubs, Subcategory } from '../../src/types';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function CloseIcon({ color }: { color: string }) {
   return (
@@ -44,12 +45,14 @@ export default function EditTransactionScreen() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const [necessity, setNecessity] = useState<Necessity>('necessary');
   const [note, setNote] = useState('');
+  const [date, setDate] = useState(getToday());
 
   useEffect(() => {
     if (txn) {
       setAmount(String(txn.amount));
       setNecessity(txn.necessity || 'necessary');
       setNote(txn.note || '');
+      setDate(txn.transaction_date || getToday());
     }
   }, [txn]);
 
@@ -108,6 +111,7 @@ export default function EditTransactionScreen() {
       subcategory_id: selectedSubcategory?.id || undefined,
       necessity: txn?.type === 'expense' ? necessity : undefined,
       note: note.trim() || undefined,
+      transaction_date: date,
     });
   };
 
@@ -174,7 +178,7 @@ export default function EditTransactionScreen() {
                 },
               ]}
             >
-              <Text style={{ fontSize: 22 }}>{cat.icon}</Text>
+              <CategoryIcon icon={cat.icon} size={22} color={colors.textPrimary} />
               <Text variant="bodySm" numberOfLines={1} align="center"
                 color={selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary}>
                 {cat.name}
@@ -232,6 +236,13 @@ export default function EditTransactionScreen() {
             </View>
           </View>
         )}
+
+        {/* Date */}
+        <DatePicker
+          value={date}
+          onChange={setDate}
+          accentColor={txn.type === 'expense' ? colors.expense : colors.income}
+        />
 
         {/* Note */}
         <TextInput

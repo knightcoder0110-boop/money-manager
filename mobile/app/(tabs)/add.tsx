@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInUp, withSpring, useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Text, Card, Button, Badge } from '../../src/components/ui';
+import { Text, Card, Button, Badge, DatePicker } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
 import { getCategories } from '../../src/api/categories';
@@ -19,6 +19,7 @@ import { getEvents } from '../../src/api/events';
 import { formatCurrency, getToday } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
 import { Necessity, TransactionType, CategoryWithSubs, Subcategory } from '../../src/types';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 export default function AddTransactionScreen() {
   const colors = useThemeColors();
@@ -67,6 +68,7 @@ export default function AddTransactionScreen() {
       setSelectedSubcategory(null);
       setNecessity('necessary');
       setNote('');
+      setDate(getToday());
       setSelectedEventId(null);
     },
     onError: () => {
@@ -210,7 +212,7 @@ export default function AddTransactionScreen() {
                 },
               ]}
             >
-              <Text style={{ fontSize: 24 }}>{cat.icon}</Text>
+              <CategoryIcon icon={cat.icon} size={24} color={colors.textPrimary} />
               <Text variant="bodySm" numberOfLines={1} align="center" color={
                 selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary
               }>
@@ -289,6 +291,13 @@ export default function AddTransactionScreen() {
             </View>
           </View>
         )}
+
+        {/* Date */}
+        <DatePicker
+          value={date}
+          onChange={setDate}
+          accentColor={type === 'expense' ? colors.expense : colors.income}
+        />
 
         {/* Note */}
         <TextInput
