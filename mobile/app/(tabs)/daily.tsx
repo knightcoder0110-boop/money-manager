@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, getToday } from '../../src/utils/format';
 import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
 import { TransactionWithDetails } from '../../src/types';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
@@ -142,7 +143,7 @@ export default function DailyScreen() {
                     ]}
                   >
                     <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-                      <Text style={{ fontSize: 18 }}>{txn.category?.icon || '💰'}</Text>
+                      <CategoryIcon icon={txn.category?.icon || 'wallet'} size={18} color={colors.textPrimary} />
                     </View>
                     <View style={{ flex: 1, gap: 2 }}>
                       <Text variant="bodyMedium" numberOfLines={1}>

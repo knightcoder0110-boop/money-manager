@@ -11,6 +11,7 @@ import { getDashboard } from '../../src/api/dashboard';
 import { formatCurrency, formatDateShort, getRelativeDate } from '../../src/utils/format';
 import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { TransactionWithDetails, CategoryBreakdownItem } from '../../src/types';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 export default function DashboardScreen() {
   const colors = useThemeColors();
@@ -164,7 +165,7 @@ export default function DashboardScreen() {
                     pressed && { transform: [{ scale: 0.95 }] },
                   ]}
                 >
-                  <Text variant="body" style={{ fontSize: 20 }}>{cat.category_icon}</Text>
+                  <CategoryIcon icon={cat.category_icon} size={20} color={colors.textPrimary} />
                   <Text variant="bodySm" numberOfLines={1}>{cat.category_name}</Text>
                   <Text variant="amount" color={colors.expense}>{formatCurrency(cat.total)}</Text>
                 </Pressable>
@@ -233,7 +234,7 @@ function TransactionRow({ transaction: txn, isLast }: { transaction: Transaction
       ]}
     >
       <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-        <Text style={{ fontSize: 18 }}>{txn.category?.icon || '💰'}</Text>
+        <CategoryIcon icon={txn.category?.icon || 'wallet'} size={18} color={colors.textPrimary} />
       </View>
       <View style={styles.txnDetails}>
         <Text variant="bodyMedium" numberOfLines={1}>

@@ -11,6 +11,7 @@ import { getEvent, deleteEvent } from '../../src/api/events';
 import { formatCurrency, formatDate, getRelativeDate } from '../../src/utils/format';
 import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function BackIcon({ color }: { color: string }) {
   return (
@@ -125,7 +126,7 @@ export default function EventDetailScreen() {
                       ]}
                     >
                       <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-                        <Text style={{ fontSize: 16 }}>{txn.category?.icon || '💰'}</Text>
+                        <CategoryIcon icon={txn.category?.icon || 'wallet'} size={16} color={colors.textPrimary} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="bodyMedium" numberOfLines={1}>{txn.note || txn.category?.name}</Text>

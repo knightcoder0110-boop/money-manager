@@ -12,6 +12,7 @@ import { getTransactions } from '../../src/api/transactions';
 import { formatCurrency, getCurrentMonth, getMonthName, getMonthDateRange, getRelativeDate } from '../../src/utils/format';
 import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function BackIcon({ color }: { color: string }) {
   return (
@@ -65,7 +66,7 @@ export default function CategoryDetailScreen() {
       <View style={styles.header}>
         <IconButton icon={<BackIcon color={colors.textPrimary} />} onPress={() => router.back()} variant="filled" />
         <View style={styles.headerCenter}>
-          {cat && <Text style={{ fontSize: 24 }}>{cat.icon}</Text>}
+          {cat && <CategoryIcon icon={cat.icon} size={24} color={colors.textPrimary} />}
           <Text variant="h2">{cat?.name || 'Category'}</Text>
         </View>
         <View style={{ width: 40 }} />

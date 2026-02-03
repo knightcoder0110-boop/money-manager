@@ -11,6 +11,7 @@ import { getCategoryBreakdown } from '../../src/api/analytics';
 import { formatCurrency, getCurrentMonth, getMonthName, getMonthDateRange } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 export default function StatsScreen() {
   const colors = useThemeColors();
@@ -144,7 +145,7 @@ export default function StatsScreen() {
                   >
                     <Card style={{ marginBottom: 8 }}>
                       <View style={styles.catRow}>
-                        <Text style={{ fontSize: 20 }}>{cat.icon}</Text>
+                        <CategoryIcon icon={cat.icon} size={20} color={colors.textPrimary} />
                         <View style={{ flex: 1 }}>
                           <View style={styles.catHeader}>
                             <Text variant="bodyMedium">{cat.name}</Text>

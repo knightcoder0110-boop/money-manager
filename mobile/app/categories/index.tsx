@@ -9,6 +9,7 @@ import { Text, Card, IconButton, Skeleton } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getCategories } from '../../src/api/categories';
 import { haptics } from '../../src/utils/haptics';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function BackIcon({ color }: { color: string }) {
   return (
@@ -59,7 +60,7 @@ export default function CategoriesScreen() {
                 <Card onPress={() => router.push(`/categories/${cat.id}`)}>
                   <View style={styles.catRow}>
                     <View style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}>
-                      <Text style={{ fontSize: 22 }}>{cat.icon}</Text>
+                      <CategoryIcon icon={cat.icon} size={22} color={colors.textPrimary} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="bodyMedium">{cat.name}</Text>
@@ -82,7 +83,7 @@ export default function CategoriesScreen() {
                 <Card onPress={() => router.push(`/categories/${cat.id}`)}>
                   <View style={styles.catRow}>
                     <View style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}>
-                      <Text style={{ fontSize: 22 }}>{cat.icon}</Text>
+                      <CategoryIcon icon={cat.icon} size={22} color={colors.textPrimary} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="bodyMedium">{cat.name}</Text>

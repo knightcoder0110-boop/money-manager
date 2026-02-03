@@ -12,6 +12,7 @@ import { formatCurrency, getRelativeDate } from '../../src/utils/format';
 import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
 import { TransactionWithDetails, TransactionType, Necessity } from '../../src/types';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 const PAGE_SIZE = 20;
 
@@ -70,7 +71,7 @@ export default function TransactionsListScreen() {
           ]}
         >
           <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-            <Text style={{ fontSize: 18 }}>{txn.category?.icon || '💰'}</Text>
+            <CategoryIcon icon={txn.category?.icon || 'wallet'} size={18} color={colors.textPrimary} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <Text variant="bodyMedium" numberOfLines={1}>

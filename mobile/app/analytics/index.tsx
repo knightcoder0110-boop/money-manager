@@ -10,6 +10,7 @@ import { useThemeColors, spacing } from '../../src/theme';
 import { getMonthlyTrends, getTopCategories } from '../../src/api/analytics';
 import { formatCurrency, getCurrentMonth, getMonthDateRange } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
+import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 function BackIcon({ color }: { color: string }) {
   return (
@@ -136,7 +137,7 @@ export default function AnalyticsScreen() {
               {topCats?.map((cat, index) => (
                 <Card key={cat.category_name} style={{ marginBottom: 8 }}>
                   <View style={styles.topCatRow}>
-                    <Text style={{ fontSize: 20 }}>{cat.category_icon}</Text>
+                    <CategoryIcon icon={cat.category_icon} size={20} color={colors.textPrimary} />
                     <View style={{ flex: 1 }}>
                       <View style={styles.topCatHeader}>
                         <Text variant="bodyMedium">{cat.category_name}</Text>
