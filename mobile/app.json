@@ -28,6 +28,12 @@
         "android.permission.USE_FINGERPRINT"
       ]
     },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7968f632-b191-4f50-b110-b0204ec76220"
+    },
     "plugins": [
       "expo-router",
       "expo-secure-store",

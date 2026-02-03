@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/auth';
 import { colors } from '../src/theme';
+import { UpdateChecker } from '../src/components/UpdateChecker';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -85,6 +86,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <View style={[styles.flex, { backgroundColor: theme.background }]}>
           <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
+          <UpdateChecker />
           <AuthGate>
             <Stack
               screenOptions={{
