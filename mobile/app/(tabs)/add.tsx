@@ -8,9 +8,10 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInUp, withSpring, useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Text, Card, Button, Badge, DatePicker } from '../../src/components/ui';
+import Svg, { Path } from 'react-native-svg';
+import { Text, Card, Button, DatePicker } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
 import { getCategories } from '../../src/api/categories';
@@ -20,6 +21,17 @@ import { formatCurrency, getToday } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
 import { Necessity, TransactionType, CategoryWithSubs, Subcategory } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
+
+// Backspace Icon
+function BackspaceIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+      <Path d="M18 9l-6 6" />
+      <Path d="M12 9l6 6" />
+    </Svg>
+  );
+}
 
 export default function AddTransactionScreen() {
   const colors = useThemeColors();
@@ -128,6 +140,10 @@ export default function AddTransactionScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Header */}
+        <Text variant="h1" style={styles.headerTitle}>Add Transaction</Text>
+
         {/* Type Toggle */}
         <View style={[styles.typeToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
@@ -155,11 +171,12 @@ export default function AddTransactionScreen() {
         </View>
 
         {/* Amount Display */}
-        <View style={styles.amountSection}>
+        <View style={[styles.amountCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text variant="caption" color={colors.textSecondary}>AMOUNT</Text>
           <Text
             variant="displayLarge"
             color={amount ? (type === 'expense' ? colors.expense : colors.income) : colors.textTertiary}
+            style={styles.amountText}
           >
             {amount ? formatCurrency(amountNum) : '₹0'}
           </Text>
@@ -178,9 +195,13 @@ export default function AddTransactionScreen() {
                     { backgroundColor: pressed ? colors.surfacePressed : colors.surface },
                   ]}
                 >
-                  <Text variant="h2" color={key === 'back' ? colors.textSecondary : colors.textPrimary}>
-                    {key === 'back' ? '⌫' : key}
-                  </Text>
+                  {key === 'back' ? (
+                    <BackspaceIcon color={colors.textSecondary} size={24} />
+                  ) : (
+                    <Text variant="h2" color={colors.textPrimary}>
+                      {key}
+                    </Text>
+                  )}
                 </Pressable>
               ))}
             </View>
@@ -200,7 +221,7 @@ export default function AddTransactionScreen() {
                 setSelectedCategory(cat);
                 setSelectedSubcategory(null);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.categoryItem,
                 {
                   backgroundColor: selectedCategory?.id === cat.id
@@ -210,9 +231,12 @@ export default function AddTransactionScreen() {
                     ? cat.color + '60'
                     : colors.border,
                 },
+                pressed && { transform: [{ scale: 0.95 }] },
               ]}
             >
-              <CategoryIcon icon={cat.icon} size={24} color={colors.textPrimary} />
+              <View style={[styles.categoryIconBg, { backgroundColor: cat.color + '20' }]}>
+                <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
+              </View>
               <Text variant="bodySm" numberOfLines={1} align="center" color={
                 selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary
               }>
@@ -314,14 +338,21 @@ export default function AddTransactionScreen() {
         />
 
         {/* Save Button */}
-        <Button
-          title={mutation.isPending ? 'Saving...' : `Save ${type === 'expense' ? 'Expense' : 'Income'}`}
-          variant={type === 'expense' ? 'danger' : 'primary'}
+        <Pressable
           onPress={handleSave}
-          loading={mutation.isPending}
-          fullWidth
-          size="lg"
-        />
+          disabled={mutation.isPending}
+          style={({ pressed }) => [
+            styles.saveButton,
+            { 
+              backgroundColor: type === 'expense' ? colors.expense : colors.accent,
+              opacity: pressed || mutation.isPending ? 0.8 : 1,
+            },
+          ]}
+        >
+          <Text variant="label" color="#FFFFFF">
+            {mutation.isPending ? 'Saving...' : `Save ${type === 'expense' ? 'Expense' : 'Income'}`}
+          </Text>
+        </Pressable>
 
         <View style={{ height: 120 }} />
       </ScrollView>
@@ -333,28 +364,46 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
   content: { paddingHorizontal: spacing.lg, gap: 16, paddingTop: 8 },
+  
+  headerTitle: {
+    marginBottom: 8,
+  },
+  
   typeToggle: {
     flexDirection: 'row',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     padding: 4,
   },
   typeButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: borderRadius.sm,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
   },
-  amountSection: { alignItems: 'center', paddingVertical: 8, gap: 4 },
-  numpad: { gap: 8 },
-  numpadRow: { flexDirection: 'row', gap: 8 },
+  
+  amountCard: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    gap: 8,
+  },
+  amountText: {
+    letterSpacing: -1,
+  },
+  
+  numpad: { gap: 10 },
+  numpadRow: { flexDirection: 'row', gap: 10 },
   numKey: {
     flex: 1,
-    height: 52,
-    borderRadius: borderRadius.md,
+    height: 58,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -363,36 +412,54 @@ const styles = StyleSheet.create({
   categoryItem: {
     width: '22%',
     aspectRatio: 1,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    padding: 4,
+    gap: 6,
+    padding: 6,
   },
+  categoryIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
   subcategoryScroll: { gap: 8 },
   subcategoryPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: borderRadius.full,
     borderWidth: 1,
   },
+  
   necessityToggle: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   necessityButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: borderRadius.md,
+    paddingVertical: 12,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
   },
+  
   noteInput: {
-    height: 48,
-    borderRadius: borderRadius.md,
+    height: 52,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     paddingHorizontal: 16,
     fontSize: 15,
+  },
+  
+  saveButton: {
+    height: 56,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
   },
 });

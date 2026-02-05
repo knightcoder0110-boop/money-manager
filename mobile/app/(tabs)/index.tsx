@@ -5,13 +5,90 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Text, Card, AmountDisplay, Badge, Skeleton, SkeletonCard } from '../../src/components/ui';
+import Svg, { Path } from 'react-native-svg';
+import { Text, Card, AmountDisplay, Skeleton, SkeletonCard } from '../../src/components/ui';
 import { useThemeColors, spacing } from '../../src/theme';
 import { getDashboard } from '../../src/api/dashboard';
-import { formatCurrency, formatDateShort, getRelativeDate } from '../../src/utils/format';
-import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
-import { TransactionWithDetails, CategoryBreakdownItem } from '../../src/types';
+import { formatCurrency } from '../../src/utils/format';
+import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
+import { TransactionWithDetails } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
+
+// Icons
+function BellIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <Path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </Svg>
+  );
+}
+
+function ExchangeIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M16 3l4 4-4 4" />
+      <Path d="M20 7H4" />
+      <Path d="M8 21l-4-4 4-4" />
+      <Path d="M4 17h16" />
+    </Svg>
+  );
+}
+
+function BillsIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <Path d="M14 2v6h6" />
+      <Path d="M16 13H8" />
+      <Path d="M16 17H8" />
+      <Path d="M10 9H8" />
+    </Svg>
+  );
+}
+
+function TransferIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M22 2L11 13" />
+      <Path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </Svg>
+  );
+}
+
+function WalletIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+      <Path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+    </Svg>
+  );
+}
+
+function MoreDotsIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <Path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <Path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    </Svg>
+  );
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+
+const FEATURES = [
+  { key: 'exchange', label: 'Exchange', icon: ExchangeIcon, colorKey: 'featureExchange' as const },
+  { key: 'bills', label: 'Bills', icon: BillsIcon, colorKey: 'featureBills' as const },
+  { key: 'transfer', label: 'Transfer', icon: TransferIcon, colorKey: 'featureTransfer' as const },
+  { key: 'wallet', label: 'Categories', icon: WalletIcon, colorKey: 'featureLoans' as const },
+  { key: 'more', label: 'More', icon: MoreDotsIcon, colorKey: 'featureMore' as const },
+];
 
 export default function DashboardScreen() {
   const colors = useThemeColors();
@@ -26,7 +103,7 @@ export default function DashboardScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={styles.content}>
-          <View style={styles.header}>
+          <View style={styles.headerRow}>
             <Skeleton width={150} height={20} />
             <Skeleton width={100} height={14} />
           </View>
@@ -56,133 +133,104 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header */}
-        <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-          <Text variant="h1">Money Manager</Text>
-          <Text variant="bodySm" color={colors.textSecondary}>
-            {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </Text>
+        {/* Header with Greeting */}
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.headerRow}>
+          <View style={styles.greetingSection}>
+            <View style={[styles.avatar, { backgroundColor: colors.surfaceElevated }]}>
+              <Text variant="h3" color={colors.accent}>M</Text>
+            </View>
+            <View>
+              <Text variant="bodySm" color={colors.textSecondary}>Hello!</Text>
+              <Text variant="h2">{getGreeting()}</Text>
+            </View>
+          </View>
+          <Pressable style={[styles.bellButton, { backgroundColor: colors.surface }]}>
+            <BellIcon color={colors.textSecondary} size={22} />
+          </Pressable>
         </Animated.View>
 
         {/* Balance Card */}
         <Animated.View entering={FadeInUp.delay(150).springify()}>
           <LinearGradient
-            colors={[colors.accent + '20', colors.accent + '05']}
+            colors={[colors.surfaceElevated, colors.surface]}
             style={[styles.balanceCard, { borderColor: colors.border }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text variant="caption" color={colors.textSecondary}>TOTAL BALANCE</Text>
-            <AmountDisplay
-              amount={data?.balance ?? 0}
-              variant="displayLarge"
-              type={data && data.balance >= 0 ? 'neutral' : 'expense'}
-            />
+            <View style={styles.balanceHeader}>
+              <View>
+                <Text variant="displayLarge" style={{ letterSpacing: -1 }}>
+                  {formatCurrency(data?.balance ?? 0)}
+                </Text>
+              </View>
+              <View style={[styles.cardChip, { backgroundColor: colors.expense }]} />
+            </View>
+            <View style={styles.cardDetails}>
+              <Text variant="body" color={colors.textSecondary} style={{ letterSpacing: 2 }}>
+                4208 •••• •••• 0210
+              </Text>
+              <Text variant="label" color={colors.textSecondary}>MONEY MANAGER</Text>
+            </View>
           </LinearGradient>
         </Animated.View>
 
-        {/* Budget Mode Banner */}
-        {data?.budget_mode?.active && (
-          <Animated.View entering={FadeInUp.delay(200)}>
-            <Card style={[styles.budgetBanner, { backgroundColor: colors.expenseMuted, borderColor: colors.expense + '30' }]}>
-              <View style={styles.budgetDot} />
-              <View style={{ flex: 1 }}>
-                <Text variant="label" color={colors.expense}>Budget Mode Active</Text>
-                <Text variant="bodySm" color={colors.textSecondary}>
-                  {formatCurrency(data.budget_mode.today_remaining)} remaining today
-                </Text>
-              </View>
-            </Card>
-          </Animated.View>
-        )}
+        {/* Features Grid */}
+        <Animated.View entering={FadeInUp.delay(200)}>
+          <View style={styles.sectionHeader}>
+            <Text variant="h3">Features</Text>
+            <Pressable onPress={() => router.push('/more')}>
+              <Text variant="label" color={colors.accent}>View All</Text>
+            </Pressable>
+          </View>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.featuresScroll}
+          >
+            {FEATURES.map((feature) => (
+              <Pressable
+                key={feature.key}
+                onPress={() => {
+                  if (feature.key === 'wallet') router.push('/categories');
+                  else if (feature.key === 'more') router.push('/more');
+                }}
+                style={({ pressed }) => [
+                  styles.featureItem,
+                  pressed && { transform: [{ scale: 0.95 }] },
+                ]}
+              >
+                <View style={[styles.featureIcon, { backgroundColor: (colors as any)[feature.colorKey] }]}>
+                  <feature.icon color="#FFFFFF" size={24} />
+                </View>
+                <Text variant="bodySm" color={colors.textSecondary}>{feature.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Animated.View>
 
-        {/* Today + Month Summary */}
+        {/* Quick Stats */}
         <Animated.View entering={FadeInUp.delay(250)} style={styles.row}>
-          <Card style={styles.summaryCard}>
+          <Card style={styles.statCard}>
             <Text variant="caption" color={colors.textSecondary}>TODAY</Text>
             <AmountDisplay amount={data?.today_expense ?? 0} variant="amountLarge" type="expense" />
-            <View style={styles.summaryRow}>
-              <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.today_income ?? 0)}</Text>
-            </View>
+            <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.today_income ?? 0)}</Text>
           </Card>
-          <Card style={styles.summaryCard}>
+          <Card style={styles.statCard}>
             <Text variant="caption" color={colors.textSecondary}>THIS MONTH</Text>
             <AmountDisplay amount={data?.month_expense ?? 0} variant="amountLarge" type="expense" />
-            <View style={styles.summaryRow}>
-              <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.month_income ?? 0)}</Text>
-            </View>
+            <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.month_income ?? 0)}</Text>
           </Card>
         </Animated.View>
 
-        {/* Necessity Breakdown */}
-        {data && (data.month_necessary > 0 || data.month_unnecessary > 0 || data.month_debatable > 0) && (
-          <Animated.View entering={FadeInUp.delay(300)}>
-            <Card>
-              <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 12 }}>
-                SPENDING BREAKDOWN
-              </Text>
-              <View style={styles.necessityRow}>
-                <NecessityBar
-                  label="Necessary"
-                  amount={data.month_necessary}
-                  total={data.month_expense}
-                  color={NECESSITY_COLORS.necessary.color}
-                  bg={NECESSITY_COLORS.necessary.bg}
-                />
-                <NecessityBar
-                  label="Unnecessary"
-                  amount={data.month_unnecessary}
-                  total={data.month_expense}
-                  color={NECESSITY_COLORS.unnecessary.color}
-                  bg={NECESSITY_COLORS.unnecessary.bg}
-                />
-                <NecessityBar
-                  label="Debatable"
-                  amount={data.month_debatable}
-                  total={data.month_expense}
-                  color={NECESSITY_COLORS.debatable.color}
-                  bg={NECESSITY_COLORS.debatable.bg}
-                />
-              </View>
-            </Card>
-          </Animated.View>
-        )}
-
-        {/* Category Breakdown */}
-        {data?.category_breakdown && data.category_breakdown.length > 0 && (
-          <Animated.View entering={FadeInUp.delay(350)}>
-            <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 8, marginLeft: 4 }}>
-              TOP CATEGORIES
-            </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-              {data.category_breakdown.slice(0, 8).map((cat: CategoryBreakdownItem) => (
-                <Pressable
-                  key={cat.category_id}
-                  onPress={() => router.push(`/categories/${cat.category_id}`)}
-                  style={({ pressed }) => [
-                    styles.categoryPill,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
-                    pressed && { transform: [{ scale: 0.95 }] },
-                  ]}
-                >
-                  <CategoryIcon icon={cat.category_icon} size={20} color={colors.textPrimary} />
-                  <Text variant="bodySm" numberOfLines={1}>{cat.category_name}</Text>
-                  <Text variant="amount" color={colors.expense}>{formatCurrency(cat.total)}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Animated.View>
-        )}
-
         {/* Recent Transactions */}
-        <Animated.View entering={FadeInUp.delay(400)}>
+        <Animated.View entering={FadeInUp.delay(300)}>
           <View style={styles.sectionHeader}>
-            <Text variant="caption" color={colors.textSecondary}>RECENT TRANSACTIONS</Text>
+            <Text variant="h3">Recent Transactions</Text>
             <Pressable onPress={() => router.push('/transactions')}>
-              <Text variant="label" color={colors.accent}>See All</Text>
+              <Text variant="label" color={colors.accent}>View All</Text>
             </Pressable>
           </View>
-          <Card padding="sm">
+          <View>
             {data?.recent_transactions?.length === 0 && (
               <View style={styles.emptyState}>
                 <Text variant="body" color={colors.textTertiary} align="center">
@@ -190,10 +238,10 @@ export default function DashboardScreen() {
                 </Text>
               </View>
             )}
-            {data?.recent_transactions?.slice(0, 10).map((txn: TransactionWithDetails, index: number) => (
-              <TransactionRow key={txn.id} transaction={txn} isLast={index === (data.recent_transactions.length - 1)} />
+            {data?.recent_transactions?.slice(0, 8).map((txn: TransactionWithDetails, index: number) => (
+              <TransactionRow key={txn.id} transaction={txn} isLast={index === Math.min((data.recent_transactions?.length ?? 1) - 1, 7)} />
             ))}
-          </Card>
+          </View>
         </Animated.View>
 
         <View style={{ height: 100 }} />
@@ -202,27 +250,16 @@ export default function DashboardScreen() {
   );
 }
 
-function NecessityBar({ label, amount, total, color, bg }: {
-  label: string; amount: number; total: number; color: string; bg: string;
-}) {
-  const pct = total > 0 ? (amount / total) * 100 : 0;
-  return (
-    <View style={styles.necessityItem}>
-      <View style={styles.necessityHeader}>
-        <Text variant="bodySm" color={color}>{label}</Text>
-        <Text variant="amount" color={color}>{formatCurrency(amount)}</Text>
-      </View>
-      <View style={[styles.necessityBarBg, { backgroundColor: bg }]}>
-        <View style={[styles.necessityBarFill, { backgroundColor: color, width: `${Math.min(pct, 100)}%` }]} />
-      </View>
-    </View>
-  );
-}
-
 function TransactionRow({ transaction: txn, isLast }: { transaction: TransactionWithDetails; isLast: boolean }) {
   const colors = useThemeColors();
   const router = useRouter();
   const typeColor = TRANSACTION_TYPE_COLORS[txn.type];
+
+  const formattedDate = new Date(txn.transaction_date).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 
   return (
     <Pressable
@@ -233,29 +270,20 @@ function TransactionRow({ transaction: txn, isLast }: { transaction: Transaction
         pressed && { backgroundColor: colors.surfacePressed },
       ]}
     >
-      <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-        <CategoryIcon icon={txn.category?.icon || 'wallet'} size={18} color={colors.textPrimary} />
+      <View style={[styles.txnIcon, { backgroundColor: txn.category?.color ? txn.category.color + '25' : colors.surfaceElevated }]}>
+        <CategoryIcon icon={txn.category?.icon || 'wallet'} size={20} color={txn.category?.color || colors.textPrimary} />
       </View>
       <View style={styles.txnDetails}>
         <Text variant="bodyMedium" numberOfLines={1}>
           {txn.note || txn.category?.name || 'Transaction'}
         </Text>
         <Text variant="bodySm" color={colors.textTertiary} numberOfLines={1}>
-          {txn.category?.name}{txn.subcategory ? ` · ${txn.subcategory.name}` : ''} · {getRelativeDate(txn.transaction_date)}
+          {formattedDate}
         </Text>
       </View>
-      <View style={styles.txnAmount}>
-        <Text variant="amount" color={typeColor.color}>
-          {typeColor.prefix}{formatCurrency(txn.amount)}
-        </Text>
-        {txn.necessity && (
-          <Badge
-            label={txn.necessity}
-            color={NECESSITY_COLORS[txn.necessity].color}
-            backgroundColor={NECESSITY_COLORS[txn.necessity].bg}
-          />
-        )}
-      </View>
+      <Text variant="amount" color={typeColor.color}>
+        {typeColor.prefix}{formatCurrency(txn.amount)}
+      </Text>
     </Pressable>
   );
 }
@@ -263,65 +291,99 @@ function TransactionRow({ transaction: txn, isLast }: { transaction: Transaction
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, gap: 16 },
-  header: { paddingTop: 8, paddingBottom: 4 },
+  content: { paddingHorizontal: spacing.lg, gap: 20 },
+  
+  // Header
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  greetingSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Balance Card
   balanceCard: {
     borderRadius: 20,
     borderWidth: 1,
     padding: 24,
+    gap: 24,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  cardChip: {
+    width: 40,
+    height: 28,
+    borderRadius: 6,
+  },
+  cardDetails: {
+    gap: 4,
+  },
+
+  // Features
+  featuresScroll: {
+    gap: 20,
+    paddingRight: 16,
+  },
+  featureItem: {
+    alignItems: 'center',
     gap: 8,
   },
-  budgetBanner: {
-    flexDirection: 'row',
+  featureIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
   },
-  budgetDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FF6B6B',
-  },
-  row: { flexDirection: 'row', gap: 12 },
-  summaryCard: { flex: 1, gap: 6 },
-  summaryRow: { flexDirection: 'row', gap: 8 },
-  necessityRow: { gap: 10 },
-  necessityItem: { gap: 4 },
-  necessityHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  necessityBarBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  necessityBarFill: { height: '100%', borderRadius: 3 },
-  categoryScroll: { gap: 10, paddingRight: 16 },
-  categoryPill: {
-    alignItems: 'center',
-    gap: 4,
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    width: 100,
-  },
+
+  // Section Header
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-    marginLeft: 4,
-    marginRight: 4,
   },
+
+  // Stats
+  row: { flexDirection: 'row', gap: 12 },
+  statCard: { flex: 1, gap: 6 },
+
+  // Transactions
   txnRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     gap: 12,
   },
   txnIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   txnDetails: { flex: 1, gap: 2 },
-  txnAmount: { alignItems: 'flex-end', gap: 4 },
   emptyState: { padding: 24 },
 });

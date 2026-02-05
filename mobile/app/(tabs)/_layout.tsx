@@ -65,18 +65,20 @@ export default function TabLayout() {
         tabBarInactiveTintColor: colors.textTertiary,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.tabBar,
-          borderTopColor: colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
           height: tabBarHeight,
           paddingBottom: bottomPadding,
           paddingTop: 8,
           elevation: 0,
         },
-        tabBarBackground: () =>
-          Platform.OS === 'ios' ? (
-            <BlurView tint={scheme === 'dark' ? 'dark' : 'light'} intensity={80} style={StyleSheet.absoluteFill} />
-          ) : null,
+        tabBarBackground: () => (
+          <View style={[styles.tabBarBg, { backgroundColor: colors.tabBar, borderColor: colors.border }]}>
+            {Platform.OS === 'ios' && (
+              <BlurView tint={scheme === 'dark' ? 'dark' : 'light'} intensity={90} style={StyleSheet.absoluteFill} />
+            )}
+          </View>
+        ),
         tabBarLabelStyle: {
           fontFamily: 'Inter-Medium',
           fontSize: 11,
@@ -141,10 +143,20 @@ const fabStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#6C5CE7',
+    shadowColor: '#3DD68C',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 8,
+  },
+});
+
+const styles = StyleSheet.create({
+  tabBarBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
 });

@@ -1,44 +1,64 @@
 export const colors = {
   dark: {
-    background: '#0A0A0F',
-    surface: '#14141F',
-    surfaceElevated: '#1C1C2E',
-    surfacePressed: '#252540',
+    // Backgrounds - Deep dark with subtle green tint
+    background: '#0D0F11',
+    surface: '#1A1D21',
+    surfaceElevated: '#1E2726',
+    surfacePressed: '#243330',
 
+    // Text hierarchy
     textPrimary: '#FFFFFF',
-    textSecondary: '#8B8BA3',
-    textTertiary: '#555570',
+    textSecondary: '#8B9A8F',
+    textTertiary: '#5A6B5E',
 
-    accent: '#6C5CE7',
-    accentLight: '#A29BFE',
-    accentMuted: 'rgba(108, 92, 231, 0.15)',
-    accentPressed: '#5A4BD6',
+    // Accent - Vibrant finance green
+    accent: '#3DD68C',
+    accentLight: '#5EEAA3',
+    accentMuted: 'rgba(61, 214, 140, 0.15)',
+    accentPressed: '#2BC47A',
 
-    income: '#00D68F',
-    incomeMuted: 'rgba(0, 214, 143, 0.12)',
+    // Income/Expense
+    income: '#3DD68C',
+    incomeMuted: 'rgba(61, 214, 140, 0.15)',
     expense: '#FF6B6B',
     expenseMuted: 'rgba(255, 107, 107, 0.12)',
 
-    necessary: '#00D68F',
-    necessaryMuted: 'rgba(0, 214, 143, 0.12)',
+    // Necessity tags
+    necessary: '#3DD68C',
+    necessaryMuted: 'rgba(61, 214, 140, 0.15)',
     unnecessary: '#FF6B6B',
     unnecessaryMuted: 'rgba(255, 107, 107, 0.12)',
     debatable: '#FFD93D',
     debatableMuted: 'rgba(255, 217, 61, 0.12)',
 
-    border: 'rgba(255, 255, 255, 0.06)',
-    borderFocused: 'rgba(108, 92, 231, 0.5)',
+    // Borders
+    border: 'rgba(255, 255, 255, 0.08)',
+    borderFocused: 'rgba(61, 214, 140, 0.5)',
 
-    tabBar: 'rgba(10, 10, 15, 0.85)',
-    overlay: 'rgba(0, 0, 0, 0.6)',
+    // UI elements
+    tabBar: 'rgba(13, 15, 17, 0.95)',
+    overlay: 'rgba(0, 0, 0, 0.7)',
 
-    skeleton: '#1C1C2E',
-    skeletonHighlight: '#252540',
+    // Skeleton loading
+    skeleton: '#1E2726',
+    skeletonHighlight: '#243330',
 
+    // Status colors
     danger: '#FF4757',
     dangerMuted: 'rgba(255, 71, 87, 0.12)',
-    success: '#00D68F',
+    success: '#3DD68C',
     warning: '#FFD93D',
+
+    // Feature icon backgrounds
+    featureExchange: '#3DD68C',
+    featureBills: '#FFD93D',
+    featureTransfer: '#4ECDC4',
+    featureLoans: '#A78BFA',
+    featureMore: '#F472B6',
+
+    // Card gradients
+    cardDark: '#1A1D21',
+    cardAccent: '#243330',
   },
   light: {
     background: '#F5F5FA',
@@ -80,6 +100,17 @@ export const colors = {
     dangerMuted: 'rgba(231, 76, 60, 0.10)',
     success: '#00B87A',
     warning: '#E6A800',
+
+    // Feature icon backgrounds
+    featureExchange: '#00B87A',
+    featureBills: '#E6A800',
+    featureTransfer: '#3498DB',
+    featureLoans: '#6C5CE7',
+    featureMore: '#E84393',
+
+    // Card gradients
+    cardDark: '#FFFFFF',
+    cardAccent: '#F0F0FA',
   },
 } as const;
 
