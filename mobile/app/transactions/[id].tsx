@@ -170,17 +170,18 @@ export default function EditTransactionScreen() {
                 setSelectedCategory(cat);
                 setSelectedSubcategory(null);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.categoryItem,
-                {
-                  backgroundColor: selectedCategory?.id === cat.id ? cat.color + '20' : colors.surface,
-                  borderColor: selectedCategory?.id === cat.id ? cat.color + '60' : colors.border,
-                },
+                selectedCategory?.id === cat.id && { backgroundColor: cat.color + '12' },
+                pressed && { opacity: 0.6 },
               ]}
             >
-              <CategoryIcon icon={cat.icon} size={22} color={colors.textPrimary} />
-              <Text variant="bodySm" numberOfLines={1} align="center"
-                color={selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary}>
+              <View style={[styles.categoryIconBg, { backgroundColor: cat.color + '20' }]}>
+                <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
+              </View>
+              <Text variant="caption" numberOfLines={1} align="center"
+                color={selectedCategory?.id === cat.id ? colors.textPrimary : colors.textTertiary}
+                style={{ textTransform: 'none', letterSpacing: 0 }}>
                 {cat.name}
               </Text>
             </Pressable>
@@ -292,17 +293,21 @@ const styles = StyleSheet.create({
   amountInput: { fontSize: 40, textAlign: 'center', minWidth: 150 },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   categoryItem: {
-    width: '22%', aspectRatio: 1, borderRadius: borderRadius.lg, borderWidth: 1,
+    width: '22%', aspectRatio: 1, borderRadius: borderRadius.lg,
     alignItems: 'center', justifyContent: 'center', gap: 4, padding: 4,
   },
-  subcatPill: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: borderRadius.full, borderWidth: 1,
+  categoryIconBg: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
   },
-  necessityToggle: { flexDirection: 'row', gap: 8 },
+  subcatPill: {
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: borderRadius.full, borderWidth: 1,
+  },
+  necessityToggle: { flexDirection: 'row', gap: 10 },
   necessityBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: borderRadius.md, borderWidth: 1,
+    flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: borderRadius.lg, borderWidth: 1,
   },
   noteInput: {
-    height: 48, borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: 16, fontSize: 15,
+    height: 52, borderRadius: borderRadius.lg, borderWidth: 1, paddingHorizontal: 16, fontSize: 15,
   },
 });

@@ -3,15 +3,15 @@ import { View, StyleSheet, FlatList, Pressable, TextInput, RefreshControl } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
-import { Text, Card, Badge, Skeleton, IconButton } from '../../src/components/ui';
-import { useThemeColors, spacing, borderRadius } from '../../src/theme';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Svg, { Path, Circle } from 'react-native-svg';
+import { Text, Skeleton } from '../../src/components/ui';
+import { useThemeColors, spacing } from '../../src/theme';
 import { getTransactions } from '../../src/api/transactions';
 import { formatCurrency, getRelativeDate } from '../../src/utils/format';
-import { NECESSITY_COLORS, TRANSACTION_TYPE_COLORS } from '../../src/constants';
+import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
-import { TransactionWithDetails, TransactionType, Necessity } from '../../src/types';
+import { TransactionWithDetails, TransactionType } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
 
 const PAGE_SIZE = 20;
@@ -24,12 +24,20 @@ function BackIcon({ color }: { color: string }) {
   );
 }
 
+function SearchIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx="11" cy="11" r="8" />
+      <Path d="M21 21l-4.35-4.35" />
+    </Svg>
+  );
+}
+
 export default function TransactionsListScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<TransactionType | 'all'>('all');
-  const [necessityFilter, setNecessityFilter] = useState<Necessity | 'all'>('all');
 
   const {
     data,
@@ -40,11 +48,10 @@ export default function TransactionsListScreen() {
     refetch,
     isRefetching,
   } = useInfiniteQuery({
-    queryKey: ['transactions', { type: typeFilter, necessity: necessityFilter, search }],
+    queryKey: ['transactions', { type: typeFilter, search }],
     queryFn: ({ pageParam = 0 }) =>
       getTransactions({
         type: typeFilter === 'all' ? undefined : typeFilter,
-        necessity: necessityFilter === 'all' ? undefined : necessityFilter,
         search: search || undefined,
         limit: PAGE_SIZE,
         offset: pageParam,
@@ -57,46 +64,41 @@ export default function TransactionsListScreen() {
   });
 
   const transactions = data?.pages.flatMap((p) => p.data) ?? [];
+  const totalCount = data?.pages[0]?.count ?? 0;
 
   const renderItem = useCallback(
     ({ item: txn, index }: { item: TransactionWithDetails; index: number }) => {
       const typeColor = TRANSACTION_TYPE_COLORS[txn.type];
+      const isLast = index === transactions.length - 1;
       return (
-        <Pressable
-          onPress={() => router.push(`/transactions/${txn.id}`)}
-          style={({ pressed }) => [
-            styles.txnRow,
-            { borderBottomColor: colors.border },
-            pressed && { backgroundColor: colors.surfacePressed },
-          ]}
-        >
-          <View style={[styles.txnIcon, { backgroundColor: txn.category?.color + '20' }]}>
-            <CategoryIcon icon={txn.category?.icon || 'wallet'} size={18} color={colors.textPrimary} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="bodyMedium" numberOfLines={1}>
-              {txn.note || txn.category?.name || 'Transaction'}
-            </Text>
-            <Text variant="bodySm" color={colors.textTertiary} numberOfLines={1}>
-              {txn.category?.name}{txn.subcategory ? ` · ${txn.subcategory.name}` : ''} · {getRelativeDate(txn.transaction_date)}
-            </Text>
-          </View>
-          <View style={styles.txnAmountCol}>
+        <Animated.View entering={FadeInUp.delay(100 + index * 30).springify()}>
+          <Pressable
+            onPress={() => router.push(`/transactions/${txn.id}`)}
+            style={({ pressed }) => [
+              styles.txnRow,
+              !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+              pressed && { backgroundColor: colors.surfacePressed },
+            ]}
+          >
+            <View style={[styles.txnIcon, { backgroundColor: txn.category?.color ? txn.category.color + '25' : colors.surfaceElevated }]}>
+              <CategoryIcon icon={txn.category?.icon || 'wallet'} size={20} color={txn.category?.color || colors.textPrimary} />
+            </View>
+            <View style={styles.txnDetails}>
+              <Text variant="bodyMedium" numberOfLines={1}>
+                {txn.note || txn.category?.name || 'Transaction'}
+              </Text>
+              <Text variant="bodySm" color={colors.textTertiary} numberOfLines={1}>
+                {txn.category?.name}{txn.subcategory ? ` · ${txn.subcategory.name}` : ''} · {getRelativeDate(txn.transaction_date)}
+              </Text>
+            </View>
             <Text variant="amount" color={typeColor.color}>
               {typeColor.prefix}{formatCurrency(txn.amount)}
             </Text>
-            {txn.necessity && (
-              <Badge
-                label={txn.necessity}
-                color={NECESSITY_COLORS[txn.necessity].color}
-                backgroundColor={NECESSITY_COLORS[txn.necessity].bg}
-              />
-            )}
-          </View>
-        </Pressable>
+          </Pressable>
+        </Animated.View>
       );
     },
-    [colors, router]
+    [colors, router, transactions.length]
   );
 
   const filterChips: { label: string; value: string; active: boolean; onPress: () => void }[] = [
@@ -108,51 +110,63 @@ export default function TransactionsListScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon={<BackIcon color={colors.textPrimary} />}
+      <Animated.View entering={FadeInDown.delay(50)} style={styles.header}>
+        <Pressable
           onPress={() => router.back()}
-          variant="filled"
-        />
-        <Text variant="h2">Transactions</Text>
-        <View style={{ width: 40 }} />
-      </View>
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
+        >
+          <BackIcon color={colors.textPrimary} />
+        </Pressable>
+        <Text variant="h1">Transactions</Text>
+      </Animated.View>
 
       {/* Search */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          placeholder="Search transactions..."
-          placeholderTextColor={colors.textTertiary}
-          value={search}
-          onChangeText={setSearch}
-          style={[styles.searchInput, {
-            color: colors.textPrimary,
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            fontFamily: 'Inter-Regular',
-          }]}
-        />
-      </View>
+      <Animated.View entering={FadeInDown.delay(100)} style={styles.searchContainer}>
+        <View style={[styles.searchInputWrapper, { backgroundColor: colors.surface }]}>
+          <SearchIcon color={colors.textTertiary} size={18} />
+          <TextInput
+            placeholder="Search transactions..."
+            placeholderTextColor={colors.textTertiary}
+            value={search}
+            onChangeText={setSearch}
+            style={[styles.searchInput, {
+              color: colors.textPrimary,
+              fontFamily: 'Inter-Regular',
+            }]}
+          />
+        </View>
+      </Animated.View>
 
-      {/* Filter Chips */}
-      <View style={styles.chipContainer}>
-        {filterChips.map((chip) => (
-          <Pressable
-            key={chip.value}
-            onPress={() => { haptics.selection(); chip.onPress(); }}
-            style={[
-              styles.chip,
-              {
-                backgroundColor: chip.active ? colors.accentMuted : colors.surface,
-                borderColor: chip.active ? colors.accent : colors.border,
-              },
-            ]}
-          >
-            <Text variant="label" color={chip.active ? colors.accent : colors.textSecondary}>
-              {chip.label}
-            </Text>
-          </Pressable>
-        ))}
+      {/* Filter Chips + Count */}
+      <Animated.View entering={FadeInDown.delay(150)} style={styles.filterRow}>
+        <View style={styles.chipContainer}>
+          {filterChips.map((chip) => (
+            <Pressable
+              key={chip.value}
+              onPress={() => { haptics.selection(); chip.onPress(); }}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: chip.active ? colors.accentMuted : colors.surface,
+                },
+              ]}
+            >
+              <Text variant="label" color={chip.active ? colors.accent : colors.textSecondary}>
+                {chip.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {totalCount > 0 && (
+          <Text variant="bodySm" color={colors.textTertiary}>
+            {totalCount} total
+          </Text>
+        )}
+      </Animated.View>
+
+      {/* Section Header */}
+      <View style={styles.sectionHeader}>
+        <Text variant="h3">All Transactions</Text>
       </View>
 
       {/* Transaction List */}
@@ -169,7 +183,7 @@ export default function TransactionsListScreen() {
         }
         ListEmptyComponent={
           isLoading ? (
-            <View style={{ gap: 8, padding: 16 }}>
+            <View style={styles.skeletonContainer}>
               {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} height={60} />)}
             </View>
           ) : (
@@ -182,7 +196,7 @@ export default function TransactionsListScreen() {
         }
         ListFooterComponent={
           isFetchingNextPage ? (
-            <View style={{ padding: 16 }}><Skeleton height={40} /></View>
+            <View style={styles.footerLoader}><Skeleton height={40} /></View>
           ) : null
         }
       />
@@ -192,48 +206,100 @@ export default function TransactionsListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  // Header
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Search
+  searchContainer: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: 20,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    fontSize: 15,
+  },
+
+  // Filters
+  filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: 8,
-  },
-  searchContainer: { paddingHorizontal: spacing.lg, marginBottom: 8 },
-  searchInput: {
-    height: 44,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 15,
+    marginBottom: 20,
   },
   chipContainer: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
     gap: 8,
-    marginBottom: 8,
   },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
+    borderRadius: 20,
   },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
+
+  // Section header
+  sectionHeader: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: 12,
+  },
+
+  // Transaction list
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 100,
+  },
   txnRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
+    paddingHorizontal: 12,
     gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   txnIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  txnAmountCol: { alignItems: 'flex-end', gap: 4 },
-  empty: { padding: 48 },
+  txnDetails: {
+    flex: 1,
+    gap: 2,
+  },
+
+  // Empty / loading states
+  skeletonContainer: {
+    gap: 8,
+    padding: 16,
+  },
+  empty: {
+    padding: 48,
+  },
+  footerLoader: {
+    padding: 16,
+  },
 });

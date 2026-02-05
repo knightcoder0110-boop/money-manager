@@ -13,17 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import {
-  Pencil,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
-  Plus,
-  Check,
-  X,
-} from 'lucide-react-native';
-import { Text, Card, IconButton, Skeleton } from '../../src/components/ui';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { Text, Skeleton } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius, typography } from '../../src/theme';
 import {
   getCategories,
@@ -35,10 +26,77 @@ import { haptics } from '../../src/utils/haptics';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
 import type { CategoryWithSubs, Subcategory } from '../../src/types';
 
+// Custom SVG Icons (replacing lucide-react-native)
 function BackIcon({ color }: { color: string }) {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M19 12H5M12 19l-7-7 7-7" />
+    </Svg>
+  );
+}
+
+function PencilIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <Path d="m15 5 4 4" />
+    </Svg>
+  );
+}
+
+function TrashIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <Path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </Svg>
+  );
+}
+
+function ChevronDownIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}
+
+function ChevronUpIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M18 15l-6-6-6 6" />
+    </Svg>
+  );
+}
+
+function PlusIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 5v14M5 12h14" />
+    </Svg>
+  );
+}
+
+function CheckIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 6L9 17l-5-5" />
+    </Svg>
+  );
+}
+
+function XIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M18 6L6 18M6 6l12 12" />
+    </Svg>
+  );
+}
+
+function ChevronRightIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9 18l6-6-6-6" />
     </Svg>
   );
 }
@@ -127,10 +185,10 @@ function SubcategoryRow({
           onSubmitEditing={handleSaveEdit}
         />
         <Pressable onPress={handleSaveEdit} disabled={isPending} hitSlop={8}>
-          <Check size={18} color={colors.accent} />
+          <CheckIcon color={colors.accent} />
         </Pressable>
         <Pressable onPress={() => { setEditName(sub.name); setEditing(false); }} disabled={isPending} hitSlop={8}>
-          <X size={18} color={colors.textTertiary} />
+          <XIcon color={colors.textTertiary} />
         </Pressable>
       </View>
     );
@@ -140,10 +198,10 @@ function SubcategoryRow({
     <View style={[styles.subRow, { borderTopColor: colors.border }]}>
       <Text variant="body" style={{ flex: 1 }}>{sub.name}</Text>
       <Pressable onPress={() => { haptics.selection(); setEditing(true); }} disabled={isPending} hitSlop={8}>
-        <Pencil size={16} color={colors.textTertiary} />
+        <PencilIcon color={colors.textTertiary} />
       </Pressable>
       <Pressable onPress={handleDelete} disabled={isPending} hitSlop={8}>
-        <Trash2 size={16} color={colors.danger} />
+        <TrashIcon color={colors.danger} />
       </Pressable>
     </View>
   );
@@ -202,10 +260,10 @@ function AddSubcategoryRow({
           onSubmitEditing={handleSave}
         />
         <Pressable onPress={handleSave} disabled={createMut.isPending} hitSlop={8}>
-          <Check size={18} color={colors.accent} />
+          <CheckIcon color={colors.accent} />
         </Pressable>
         <Pressable onPress={() => { setNewName(''); setAdding(false); }} disabled={createMut.isPending} hitSlop={8}>
-          <X size={18} color={colors.textTertiary} />
+          <XIcon color={colors.textTertiary} />
         </Pressable>
       </View>
     );
@@ -216,15 +274,15 @@ function AddSubcategoryRow({
       style={[styles.subRow, { borderTopColor: colors.border }]}
       onPress={() => { haptics.selection(); setAdding(true); }}
     >
-      <Plus size={16} color={colors.accent} />
+      <PlusIcon color={colors.accent} />
       <Text variant="bodySm" color={colors.accent}>Add subcategory</Text>
     </Pressable>
   );
 }
 
-// ─── Category card ─────────────────────────────────────────────────
+// ─── Category Row ─────────────────────────────────────────────────
 
-function CategoryCard({
+function CategoryRow({
   cat,
   index,
   colors,
@@ -246,10 +304,13 @@ function CategoryCard({
 
   return (
     <Animated.View entering={FadeInUp.delay(index * 40)}>
-      <Card>
+      <View style={styles.catContainer}>
         <View style={styles.catRow}>
-          <Pressable onPress={() => router.push(`/categories/${cat.id}`)} style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}>
-            <CategoryIcon icon={cat.icon} size={22} color={colors.textPrimary} />
+          <Pressable
+            onPress={() => router.push(`/categories/${cat.id}`)}
+            style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}
+          >
+            <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
           </Pressable>
           <Pressable onPress={() => router.push(`/categories/${cat.id}`)} style={{ flex: 1 }}>
             <Text variant="bodyMedium">{cat.name}</Text>
@@ -259,26 +320,26 @@ function CategoryCard({
             </Text>
           </Pressable>
           <Pressable onPress={() => router.push(`/categories/edit?id=${cat.id}`)} hitSlop={8} style={{ padding: 4 }}>
-            <Pencil size={18} color={colors.textSecondary} />
+            <PencilIcon color={colors.textSecondary} size={18} />
           </Pressable>
           <Pressable onPress={toggleExpand} hitSlop={8} style={{ padding: 4 }}>
             {expanded ? (
-              <ChevronUp size={20} color={colors.textTertiary} />
+              <ChevronUpIcon color={colors.textTertiary} />
             ) : (
-              <ChevronDown size={20} color={colors.textTertiary} />
+              <ChevronDownIcon color={colors.textTertiary} />
             )}
           </Pressable>
         </View>
 
         {expanded && (
-          <View style={{ marginTop: 8 }}>
+          <View style={{ marginTop: 4 }}>
             {(cat.subcategories ?? []).map((sub) => (
               <SubcategoryRow key={sub.id} sub={sub} colors={colors} disabled={false} />
             ))}
             <AddSubcategoryRow categoryId={cat.id} colors={colors} />
           </View>
         )}
-      </Card>
+      </View>
     </Animated.View>
   );
 }
@@ -299,11 +360,16 @@ export default function CategoriesScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <IconButton icon={<BackIcon color={colors.textPrimary} />} onPress={() => router.back()} variant="filled" />
-        <Text variant="h2">Categories</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      {/* Header */}
+      <Animated.View entering={FadeInDown.delay(50)} style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
+        >
+          <BackIcon color={colors.textPrimary} />
+        </Pressable>
+        <Text variant="h1">Categories</Text>
+      </Animated.View>
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -319,18 +385,22 @@ export default function CategoriesScreen() {
           </View>
         ) : (
           <>
-            <Text variant="caption" color={colors.textSecondary} style={{ marginLeft: 4 }}>
-              EXPENSE CATEGORIES ({expenseCategories.length})
-            </Text>
+            {/* Expense Categories */}
+            <View style={styles.sectionHeader}>
+              <Text variant="h3">Expenses</Text>
+              <Text variant="bodySm" color={colors.textTertiary}>{expenseCategories.length}</Text>
+            </View>
             {expenseCategories.map((cat, index) => (
-              <CategoryCard key={cat.id} cat={cat} index={index} colors={colors} />
+              <CategoryRow key={cat.id} cat={cat} index={index} colors={colors} />
             ))}
 
-            <Text variant="caption" color={colors.textSecondary} style={{ marginLeft: 4, marginTop: 16 }}>
-              INCOME CATEGORIES ({incomeCategories.length})
-            </Text>
+            {/* Income Categories */}
+            <View style={[styles.sectionHeader, { marginTop: 12 }]}>
+              <Text variant="h3">Income</Text>
+              <Text variant="bodySm" color={colors.textTertiary}>{incomeCategories.length}</Text>
+            </View>
             {incomeCategories.map((cat, index) => (
-              <CategoryCard key={cat.id} cat={cat} index={expenseCategories.length + index} colors={colors} />
+              <CategoryRow key={cat.id} cat={cat} index={expenseCategories.length + index} colors={colors} />
             ))}
           </>
         )}
@@ -345,16 +415,33 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 16,
   },
-  content: { paddingHorizontal: spacing.lg, gap: 8 },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: { paddingHorizontal: spacing.lg, gap: 8, paddingTop: 8 },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  catContainer: {
+    paddingVertical: 4,
+  },
   catRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   catIcon: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -364,6 +451,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 4,
+    marginLeft: 56,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   inlineInput: {

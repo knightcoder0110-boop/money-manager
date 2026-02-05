@@ -3,10 +3,11 @@ import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-n
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
-import Animated, { FadeInUp } from 'react-native-reanimated';
-import { Text, Card, AmountDisplay, IconButton, Skeleton } from '../../src/components/ui';
-import { useThemeColors, spacing } from '../../src/theme';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { Text, Skeleton } from '../../src/components/ui';
+import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getCategoryBreakdown } from '../../src/api/analytics';
 import { getTransactions } from '../../src/api/transactions';
 import { formatCurrency, getCurrentMonth, getMonthName, getMonthDateRange, getRelativeDate } from '../../src/utils/format';
@@ -18,6 +19,22 @@ function BackIcon({ color }: { color: string }) {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M19 12H5M12 19l-7-7 7-7" />
+    </Svg>
+  );
+}
+
+function ChevronLeftIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M15 18l-6-6 6-6" />
+    </Svg>
+  );
+}
+
+function ChevronRightIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9 18l6-6-6-6" />
     </Svg>
   );
 }
@@ -63,14 +80,24 @@ export default function CategoryDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <IconButton icon={<BackIcon color={colors.textPrimary} />} onPress={() => router.back()} variant="filled" />
+      {/* Header */}
+      <Animated.View entering={FadeInDown.delay(50)} style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={[styles.backButton, { backgroundColor: colors.surface }]}
+        >
+          <BackIcon color={colors.textPrimary} />
+        </Pressable>
         <View style={styles.headerCenter}>
-          {cat && <CategoryIcon icon={cat.icon} size={24} color={colors.textPrimary} />}
-          <Text variant="h2">{cat?.name || 'Category'}</Text>
+          {cat && (
+            <View style={[styles.headerCatIcon, { backgroundColor: (cat.color || colors.accent) + '20' }]}>
+              <CategoryIcon icon={cat.icon} size={18} color={cat.color || colors.textPrimary} />
+            </View>
+          )}
+          <Text variant="h1" numberOfLines={1}>{cat?.name || 'Category'}</Text>
         </View>
-        <View style={{ width: 40 }} />
-      </View>
+        <View style={{ width: 44 }} />
+      </Animated.View>
 
       <ScrollView
         contentContainerStyle={styles.content}
@@ -80,82 +107,109 @@ export default function CategoryDetailScreen() {
         }
       >
         {/* Month Selector */}
-        <View style={styles.monthSelector}>
-          <Pressable onPress={() => changeMonth(-1)} style={{ padding: 8 }}>
-            <Text variant="h2" color={colors.accent}>‹</Text>
-          </Pressable>
-          <Text variant="h3">{getMonthName(month.year, month.month)}</Text>
-          <Pressable onPress={() => changeMonth(1)} style={{ padding: 8 }}>
-            <Text variant="h2" color={colors.accent}>›</Text>
-          </Pressable>
-        </View>
+        <Animated.View entering={FadeInDown.delay(100)}>
+          <View style={[styles.monthPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Pressable
+              onPress={() => changeMonth(-1)}
+              style={({ pressed }) => [styles.monthArrow, pressed && { backgroundColor: colors.surfacePressed }]}
+            >
+              <ChevronLeftIcon color={colors.accent} />
+            </Pressable>
+            <Text variant="h3" style={{ minWidth: 160, textAlign: 'center' }}>
+              {getMonthName(month.year, month.month)}
+            </Text>
+            <Pressable
+              onPress={() => changeMonth(1)}
+              style={({ pressed }) => [styles.monthArrow, pressed && { backgroundColor: colors.surfacePressed }]}
+            >
+              <ChevronRightIcon color={colors.accent} />
+            </Pressable>
+          </View>
+        </Animated.View>
 
-        {/* Total */}
+        {/* Hero Card */}
         {cat && (
-          <Animated.View entering={FadeInUp.delay(100)}>
-            <Card>
+          <Animated.View entering={FadeInUp.delay(150).springify()}>
+            <LinearGradient
+              colors={[colors.surfaceElevated, colors.surface]}
+              style={[styles.heroCard, { borderColor: colors.border }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
               <Text variant="caption" color={colors.textSecondary}>TOTAL THIS MONTH</Text>
-              <AmountDisplay amount={cat.total} variant="displayMedium" type="expense" />
+              <Text variant="displayLarge" color={colors.expense} style={{ letterSpacing: -1 }}>
+                {formatCurrency(cat.total)}
+              </Text>
               <Text variant="bodySm" color={colors.textTertiary}>
                 {cat.transaction_count} transactions
               </Text>
 
               {/* Necessity Split */}
-              <View style={styles.necessitySplit}>
-                {[
-                  { label: 'Necessary', amount: cat.necessary, nc: NECESSITY_COLORS.necessary },
-                  { label: 'Unnecessary', amount: cat.unnecessary, nc: NECESSITY_COLORS.unnecessary },
-                  { label: 'Debatable', amount: cat.debatable, nc: NECESSITY_COLORS.debatable },
-                ].map((item) => item.amount > 0 && (
-                  <View key={item.label} style={styles.necessityItem}>
-                    <View style={[styles.necessityDot, { backgroundColor: item.nc.color }]} />
-                    <Text variant="bodySm" color={colors.textSecondary}>{item.label}</Text>
-                    <Text variant="amount" color={item.nc.color}>{formatCurrency(item.amount)}</Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
+              {(cat.necessary > 0 || cat.unnecessary > 0 || cat.debatable > 0) && (
+                <View style={styles.necessitySection}>
+                  <View style={[styles.necessityDivider, { backgroundColor: colors.border }]} />
+                  {[
+                    { label: 'Necessary', amount: cat.necessary, nc: NECESSITY_COLORS.necessary },
+                    { label: 'Unnecessary', amount: cat.unnecessary, nc: NECESSITY_COLORS.unnecessary },
+                    { label: 'Debatable', amount: cat.debatable, nc: NECESSITY_COLORS.debatable },
+                  ].map((item) => item.amount > 0 && (
+                    <View key={item.label} style={styles.necessityItem}>
+                      <View style={[styles.necessityDot, { backgroundColor: item.nc.color }]} />
+                      <Text variant="bodySm" color={colors.textSecondary} style={{ flex: 1 }}>{item.label}</Text>
+                      <Text variant="amount" color={item.nc.color}>{formatCurrency(item.amount)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </LinearGradient>
           </Animated.View>
         )}
 
         {/* Transactions */}
-        <Text variant="caption" color={colors.textSecondary} style={{ marginLeft: 4 }}>
-          TRANSACTIONS
-        </Text>
-        {isLoading ? (
-          <View style={{ gap: 8 }}>{[1, 2, 3].map((i) => <Skeleton key={i} height={50} />)}</View>
-        ) : transactions.length === 0 ? (
-          <Card>
-            <Text variant="body" color={colors.textTertiary} align="center" style={{ padding: 24 }}>
-              No transactions this month
-            </Text>
-          </Card>
-        ) : (
-          <Card padding="sm">
-            {transactions.map((txn, index) => {
+        <Animated.View entering={FadeInUp.delay(250)}>
+          <View style={styles.sectionHeader}>
+            <Text variant="h3">Transactions</Text>
+            <Text variant="bodySm" color={colors.textTertiary}>{transactions.length}</Text>
+          </View>
+          {isLoading ? (
+            <View style={{ gap: 8 }}>{[1, 2, 3].map((i) => <Skeleton key={i} height={50} />)}</View>
+          ) : transactions.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text variant="body" color={colors.textTertiary} align="center">
+                No transactions this month
+              </Text>
+            </View>
+          ) : (
+            transactions.map((txn, index) => {
               const typeColor = TRANSACTION_TYPE_COLORS[txn.type];
               const isLast = index === transactions.length - 1;
               return (
                 <Pressable
                   key={txn.id}
                   onPress={() => router.push(`/transactions/${txn.id}`)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.txnRow,
                     !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                    pressed && { backgroundColor: colors.surfacePressed },
                   ]}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyMedium" numberOfLines={1}>{txn.note || txn.subcategory?.name || 'Transaction'}</Text>
-                    <Text variant="bodySm" color={colors.textTertiary}>{getRelativeDate(txn.transaction_date)}</Text>
+                  <View style={styles.txnDetails}>
+                    <Text variant="bodyMedium" numberOfLines={1}>
+                      {txn.note || txn.subcategory?.name || 'Transaction'}
+                    </Text>
+                    <Text variant="bodySm" color={colors.textTertiary}>
+                      {getRelativeDate(txn.transaction_date)}
+                    </Text>
                   </View>
                   <Text variant="amount" color={typeColor.color}>
                     {typeColor.prefix}{formatCurrency(txn.amount)}
                   </Text>
                 </Pressable>
               );
-            })}
-          </Card>
-        )}
+            })
+          )}
+        </Animated.View>
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -165,14 +219,100 @@ export default function CategoryDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 16,
   },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  content: { paddingHorizontal: spacing.lg, gap: 12 },
-  monthSelector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 24 },
-  necessitySplit: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.06)', gap: 8 },
-  necessityItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  necessityDot: { width: 8, height: 8, borderRadius: 4 },
-  txnRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 12 },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  headerCatIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: { paddingHorizontal: spacing.lg, gap: 20, paddingTop: 8 },
+
+  // Month Selector
+  monthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: borderRadius.xl,
+    borderWidth: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  monthArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Hero Card
+  heroCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    gap: 6,
+  },
+  necessitySection: {
+    marginTop: 8,
+    gap: 8,
+  },
+  necessityDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginBottom: 4,
+  },
+  necessityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  necessityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // Section header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  // Transactions
+  txnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  txnDetails: {
+    flex: 1,
+    gap: 2,
+  },
+  emptyState: {
+    padding: 32,
+  },
 });

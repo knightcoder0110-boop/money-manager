@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, useColorScheme } from 'react-native';
+import { View, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
+import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/auth';
@@ -76,6 +78,15 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, isLoading]);
+
+  // Set system UI to match app theme
+  useEffect(() => {
+    // Set the root background color so it shows behind transparent nav bar
+    SystemUI.setBackgroundColorAsync(theme.background);
+    if (Platform.OS === 'android') {
+      NavigationBar.setButtonStyleAsync(scheme === 'light' ? 'dark' : 'light');
+    }
+  }, [scheme, theme.background]);
 
   if (!fontsLoaded || isLoading) {
     return <View style={[styles.loading, { backgroundColor: theme.background }]} />;

@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useThemeColors, useColorSchemeValue } from '../../src/theme';
+import { useThemeColors } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
 
 function HomeIcon({ color, size = 24 }: { color: string; size?: number }) {
@@ -52,7 +51,6 @@ function MenuIcon({ color, size = 24 }: { color: string; size?: number }) {
 
 export default function TabLayout() {
   const colors = useThemeColors();
-  const scheme = useColorSchemeValue();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
   const tabBarHeight = 56 + bottomPadding;
@@ -73,11 +71,7 @@ export default function TabLayout() {
           elevation: 0,
         },
         tabBarBackground: () => (
-          <View style={[styles.tabBarBg, { backgroundColor: colors.tabBar, borderColor: colors.border }]}>
-            {Platform.OS === 'ios' && (
-              <BlurView tint={scheme === 'dark' ? 'dark' : 'light'} intensity={90} style={StyleSheet.absoluteFill} />
-            )}
-          </View>
+          <View style={[styles.tabBarBg, { backgroundColor: colors.background }]} />
         ),
         tabBarLabelStyle: {
           fontFamily: 'Inter-Medium',
@@ -154,9 +148,5 @@ const fabStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   tabBarBg: {
     ...StyleSheet.absoluteFillObject,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
   },
 });

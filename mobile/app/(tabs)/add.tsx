@@ -171,7 +171,7 @@ export default function AddTransactionScreen() {
         </View>
 
         {/* Amount Display */}
-        <View style={[styles.amountCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={styles.amountArea}>
           <Text variant="caption" color={colors.textSecondary}>AMOUNT</Text>
           <Text
             variant="displayLarge"
@@ -192,7 +192,7 @@ export default function AddTransactionScreen() {
                   onPress={() => handleNumpadPress(key)}
                   style={({ pressed }) => [
                     styles.numKey,
-                    { backgroundColor: pressed ? colors.surfacePressed : colors.surface },
+                    pressed && { opacity: 0.5 },
                   ]}
                 >
                   {key === 'back' ? (
@@ -223,23 +223,16 @@ export default function AddTransactionScreen() {
               }}
               style={({ pressed }) => [
                 styles.categoryItem,
-                {
-                  backgroundColor: selectedCategory?.id === cat.id
-                    ? cat.color + '20'
-                    : colors.surface,
-                  borderColor: selectedCategory?.id === cat.id
-                    ? cat.color + '60'
-                    : colors.border,
-                },
-                pressed && { transform: [{ scale: 0.95 }] },
+                selectedCategory?.id === cat.id && { backgroundColor: cat.color + '12' },
+                pressed && { opacity: 0.6 },
               ]}
             >
               <View style={[styles.categoryIconBg, { backgroundColor: cat.color + '20' }]}>
                 <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
               </View>
-              <Text variant="bodySm" numberOfLines={1} align="center" color={
-                selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary
-              }>
+              <Text variant="caption" numberOfLines={1} align="center" color={
+                selectedCategory?.id === cat.id ? colors.textPrimary : colors.textTertiary
+              } style={{ textTransform: 'none', letterSpacing: 0 }}>
                 {cat.name}
               </Text>
             </Pressable>
@@ -382,13 +375,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   
-  amountCard: {
+  amountArea: {
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    gap: 8,
+    paddingVertical: 20,
+    gap: 6,
   },
   amountText: {
     letterSpacing: -1,
@@ -398,8 +388,7 @@ const styles = StyleSheet.create({
   numpadRow: { flexDirection: 'row', gap: 10 },
   numKey: {
     flex: 1,
-    height: 58,
-    borderRadius: borderRadius.lg,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -412,12 +401,11 @@ const styles = StyleSheet.create({
   categoryItem: {
     width: '22%',
     aspectRatio: 1,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    padding: 6,
+    gap: 4,
+    padding: 4,
   },
   categoryIconBg: {
     width: 38,
