@@ -37,7 +37,7 @@ interface AppStore {
 
   // Streak tracking
   streak: StreakData;
-  updateStreak: (transactionDate: string) => { newMilestone: number | null };
+  updateStreak: (transactionDate: string) => { newMilestone: number | null; isFirstToday: boolean };
   getStreakInfo: () => { current: number; longest: number; total: number };
 
   // Milestone celebration
@@ -107,6 +107,7 @@ export const useAppStore = create<AppStore>()(
         let newStreak = state.streak.currentStreak;
         let newLongest = state.streak.longestStreak;
         const lastLog = state.streak.lastLogDate;
+        const isFirstToday = lastLog !== today;
 
         // Determine streak based on transaction date and last log
         if (transactionDate === today) {
@@ -153,7 +154,7 @@ export const useAppStore = create<AppStore>()(
           },
         }));
 
-        return { newMilestone };
+        return { newMilestone, isFirstToday };
       },
 
       getStreakInfo: () => {

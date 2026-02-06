@@ -183,8 +183,10 @@ export interface CategoryAnalytics {
 }
 
 export interface TopCategory {
+  category_id: string;
   category_name: string;
   category_icon: string;
+  category_color: string;
   total: number;
   percentage: number;
 }

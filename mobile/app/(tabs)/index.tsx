@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { Text, Card, AmountDisplay, Skeleton, SkeletonCard, FAB } from '../../src/components/ui';
+import { Text, Card, AmountDisplay, Skeleton, SkeletonCard } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getDashboard } from '../../src/api/dashboard';
 import { formatCurrency } from '../../src/utils/format';
 import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { TransactionWithDetails } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
-import { QuickAddSheet } from '../../src/components/QuickAddSheet';
 import { useAppStore } from '../../src/store/app';
 
 // Icons
@@ -21,6 +20,22 @@ function SettingsIcon({ color, size = 24 }: { color: string; size?: number }) {
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
       <Path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+    </Svg>
+  );
+}
+
+function ArrowDownIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 5v14M19 12l-7 7-7-7" />
+    </Svg>
+  );
+}
+
+function ArrowUpIcon({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 19V5M5 12l7-7 7 7" />
     </Svg>
   );
 }
@@ -35,13 +50,79 @@ function getGreeting(): string {
 export default function DashboardScreen() {
   const colors = useThemeColors();
   const router = useRouter();
-  const [quickAddVisible, setQuickAddVisible] = useState(false);
   const { streak } = useAppStore();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard'],
     queryFn: getDashboard,
   });
+
+  // Compute daily average from monthly data
+  const dailyAvg = useMemo(() => {
+    if (!data) return 0;
+    const today = new Date();
+    const dayOfMonth = today.getDate();
+    if (dayOfMonth <= 1) return data.month_expense ?? 0;
+    return (data.month_expense ?? 0) / dayOfMonth;
+  }, [data]);
+
+  const todayExpense = data?.today_expense ?? 0;
+  const todayVsAvg = dailyAvg > 0 ? ((todayExpense - dailyAvg) / dailyAvg) * 100 : 0;
+
+  // Necessity calculations
+  const necessary = data?.month_necessary ?? 0;
+  const unnecessary = data?.month_unnecessary ?? 0;
+  const debatable = data?.month_debatable ?? 0;
+  const necessityTotal = necessary + unnecessary + debatable;
+  const necessaryPercent = necessityTotal > 0 ? Math.round((necessary / necessityTotal) * 100) : 0;
+
+  // Smart insight — always shows
+  const insight = useMemo(() => {
+    const unnecessaryPercent = necessityTotal > 0 ? Math.round((unnecessary / necessityTotal) * 100) : 0;
+    const currentStreak = streak.currentStreak;
+
+    if (currentStreak >= 7) {
+      return {
+        emoji: '🔥',
+        text: `${currentStreak}-day streak! You're building a real habit.`,
+        color: colors.warning,
+      };
+    }
+    if (unnecessaryPercent > 40 && necessityTotal > 0) {
+      return {
+        emoji: '⚠️',
+        text: `${unnecessaryPercent}% of spending this month was on wants. Small cuts add up!`,
+        color: colors.expense,
+      };
+    }
+    if (unnecessaryPercent < 20 && necessityTotal > 0) {
+      return {
+        emoji: '🎯',
+        text: `Only ${unnecessaryPercent}% on wants this month. Strong discipline!`,
+        color: colors.income,
+      };
+    }
+    if ((data?.month_income ?? 0) > (data?.month_expense ?? 0) && (data?.month_income ?? 0) > 0) {
+      const savingsRate = Math.round(((data?.month_income ?? 0) - (data?.month_expense ?? 0)) / (data?.month_income ?? 1) * 100);
+      return {
+        emoji: '📈',
+        text: `You're in the green this month! Savings rate: ${savingsRate}%`,
+        color: colors.income,
+      };
+    }
+    if (currentStreak > 0) {
+      return {
+        emoji: '✨',
+        text: `${currentStreak}-day streak! Keep tracking to build better habits.`,
+        color: colors.accent,
+      };
+    }
+    return {
+      emoji: '💡',
+      text: 'Log your spending daily to unlock insights about your habits.',
+      color: colors.accent,
+    };
+  }, [data, streak, necessityTotal, unnecessary, colors]);
 
   if (isLoading) {
     return (
@@ -102,39 +183,10 @@ export default function DashboardScreen() {
           </View>
         </Animated.View>
 
-        {/* Balance Hero */}
+        {/* TODAY'S SPENDING — THE HERO */}
         <Animated.View entering={FadeInUp.delay(150).springify()}>
-          <View style={[styles.balanceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text variant="caption" color={colors.textSecondary}>CURRENT BALANCE</Text>
-            <Text
-              variant="displayLarge"
-              color={(data?.balance ?? 0) >= 0 ? colors.income : colors.expense}
-              style={{ letterSpacing: -1, marginTop: 4 }}
-            >
-              {formatCurrency(data?.balance ?? 0)}
-            </Text>
-            {/* Monthly Net Change */}
-            <View style={styles.monthTrend}>
-              {(() => {
-                const monthNet = (data?.month_income ?? 0) - (data?.month_expense ?? 0);
-                const isPositive = monthNet >= 0;
-                return (
-                  <>
-                    <Text variant="bodySm" color={isPositive ? colors.income : colors.expense}>
-                      {isPositive ? '+' : ''}{formatCurrency(monthNet)}
-                    </Text>
-                    <Text variant="bodySm" color={colors.textTertiary}> this month</Text>
-                  </>
-                );
-              })()}
-            </View>
-          </View>
-        </Animated.View>
-
-        {/* Today's Status */}
-        <Animated.View entering={FadeInUp.delay(200)}>
-          <Card style={styles.todayCard}>
-            <View style={styles.todayHeader}>
+          <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.heroHeader}>
               <Text variant="caption" color={colors.textSecondary}>TODAY</Text>
               {data?.budget_mode?.active && (
                 <View style={[styles.budgetBadge, { backgroundColor: colors.accentMuted }]}>
@@ -142,165 +194,154 @@ export default function DashboardScreen() {
                 </View>
               )}
             </View>
-            <View style={styles.todayRow}>
-              <View style={{ flex: 1 }}>
-                <AmountDisplay amount={data?.today_expense ?? 0} variant="amountLarge" type="expense" />
-                {(data?.today_income ?? 0) > 0 && (
-                  <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.today_income ?? 0)} income</Text>
-                )}
-              </View>
-              {data?.budget_mode?.active && (
-                <View style={styles.budgetRemaining}>
-                  <Text variant="caption" color={colors.textTertiary}>REMAINING</Text>
+
+            {/* Big spending number */}
+            <Text
+              variant="displayLarge"
+              color={todayExpense > 0 ? colors.expense : colors.textTertiary}
+              style={{ letterSpacing: -1, marginTop: 4 }}
+            >
+              {formatCurrency(todayExpense)}
+            </Text>
+
+            {/* Comparison to daily average */}
+            <View style={styles.comparisonRow}>
+              {dailyAvg > 0 ? (
+                <View style={styles.comparisonPill}>
+                  {todayVsAvg <= 0 ? (
+                    <ArrowDownIcon color={colors.income} size={12} />
+                  ) : (
+                    <ArrowUpIcon color={colors.expense} size={12} />
+                  )}
                   <Text
-                    variant="h3"
-                    color={(data?.budget_mode?.today_remaining ?? 0) >= 0 ? colors.income : colors.expense}
+                    variant="bodySm"
+                    color={todayVsAvg <= 0 ? colors.income : colors.expense}
                   >
-                    {formatCurrency(data?.budget_mode?.today_remaining ?? 0)}
+                    {Math.abs(Math.round(todayVsAvg))}% {todayVsAvg <= 0 ? 'below' : 'above'} daily avg
                   </Text>
                 </View>
+              ) : (
+                <Text variant="bodySm" color={colors.textTertiary}>
+                  Start tracking to see your average
+                </Text>
+              )}
+              {(data?.today_income ?? 0) > 0 && (
+                <Text variant="bodySm" color={colors.income}>
+                  +{formatCurrency(data?.today_income ?? 0)}
+                </Text>
               )}
             </View>
-          </Card>
+
+            {/* Budget remaining */}
+            {data?.budget_mode?.active && (
+              <View style={[styles.budgetRow, { borderTopColor: colors.border }]}>
+                <Text variant="bodySm" color={colors.textSecondary}>Remaining today</Text>
+                <Text
+                  variant="h3"
+                  color={(data?.budget_mode?.today_remaining ?? 0) >= 0 ? colors.income : colors.expense}
+                >
+                  {formatCurrency(data?.budget_mode?.today_remaining ?? 0)}
+                </Text>
+              </View>
+            )}
+          </View>
         </Animated.View>
 
-        {/* Monthly Necessity Split */}
+        {/* Necessity Quick Glance — Compact */}
+        {necessityTotal > 0 && (
+          <Animated.View entering={FadeInUp.delay(200)}>
+            <View style={[styles.necessityCompact, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.necessityBarCompact}>
+                {necessary > 0 && (
+                  <View style={[styles.necessitySegment, { flex: necessary, backgroundColor: colors.income }]} />
+                )}
+                {debatable > 0 && (
+                  <View style={[styles.necessitySegment, { flex: debatable, backgroundColor: colors.warning }]} />
+                )}
+                {unnecessary > 0 && (
+                  <View style={[styles.necessitySegment, { flex: unnecessary, backgroundColor: colors.expense }]} />
+                )}
+              </View>
+              <View style={styles.necessityLabels}>
+                <Text variant="bodySm" color={colors.textSecondary}>
+                  <Text variant="bodySm" color={colors.income}>{necessaryPercent}%</Text> needed
+                </Text>
+                <Text variant="bodySm" color={colors.textTertiary}>
+                  {formatCurrency(necessityTotal)} this month
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Smart Insight — Always Present */}
         <Animated.View entering={FadeInUp.delay(250)}>
-          <Card style={styles.necessityCard}>
-            <Text variant="caption" color={colors.textSecondary}>THIS MONTH - NECESSITY SPLIT</Text>
-            <View style={styles.necessityBar}>
-              {(() => {
-                const necessary = data?.month_necessary ?? 0;
-                const unnecessary = data?.month_unnecessary ?? 0;
-                const debatable = data?.month_debatable ?? 0;
-                const total = necessary + unnecessary + debatable;
-                if (total === 0) return <View style={[styles.necessitySegment, { flex: 1, backgroundColor: colors.border }]} />;
-                return (
-                  <>
-                    {necessary > 0 && (
-                      <View style={[styles.necessitySegment, { flex: necessary, backgroundColor: colors.income }]} />
-                    )}
-                    {debatable > 0 && (
-                      <View style={[styles.necessitySegment, { flex: debatable, backgroundColor: colors.accent }]} />
-                    )}
-                    {unnecessary > 0 && (
-                      <View style={[styles.necessitySegment, { flex: unnecessary, backgroundColor: colors.expense }]} />
-                    )}
-                  </>
-                );
-              })()}
-            </View>
-            <View style={styles.necessityLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
-                <Text variant="bodySm" color={colors.textSecondary}>
-                  {formatCurrency(data?.month_necessary ?? 0)}
-                </Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-                <Text variant="bodySm" color={colors.textSecondary}>
-                  {formatCurrency(data?.month_debatable ?? 0)}
-                </Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
-                <Text variant="bodySm" color={colors.textSecondary}>
-                  {formatCurrency(data?.month_unnecessary ?? 0)}
-                </Text>
-              </View>
-            </View>
-          </Card>
+          <View style={[styles.insightCard, { backgroundColor: insight.color + '12', borderColor: insight.color + '30' }]}>
+            <Text style={styles.insightEmoji}>{insight.emoji}</Text>
+            <Text variant="bodySm" color={colors.textSecondary} style={{ flex: 1 }}>
+              {insight.text}
+            </Text>
+          </View>
         </Animated.View>
-
-        {/* Smart Insight Card */}
-        {(() => {
-          // Generate a smart insight based on available data
-          const unnecessary = data?.month_unnecessary ?? 0;
-          const total = (data?.month_necessary ?? 0) + unnecessary + (data?.month_debatable ?? 0);
-          const unnecessaryPercent = total > 0 ? Math.round((unnecessary / total) * 100) : 0;
-          const currentStreak = streak.currentStreak;
-
-          let insightEmoji = '💡';
-          let insightText = '';
-          let insightColor = colors.accent;
-
-          if (currentStreak >= 7) {
-            insightEmoji = '🔥';
-            insightText = `Amazing! ${currentStreak} days of tracking. You're building a great habit!`;
-            insightColor = colors.warning;
-          } else if (unnecessaryPercent > 40) {
-            insightEmoji = '⚠️';
-            insightText = `${unnecessaryPercent}% of spending this month was marked unnecessary. Small cuts add up!`;
-            insightColor = colors.expense;
-          } else if (unnecessaryPercent < 20 && total > 0) {
-            insightEmoji = '🎯';
-            insightText = `Great job! Only ${unnecessaryPercent}% unnecessary spending this month. Keep it up!`;
-            insightColor = colors.income;
-          } else if ((data?.month_income ?? 0) > (data?.month_expense ?? 0)) {
-            insightEmoji = '📈';
-            insightText = `You're in the green this month! Savings rate: ${Math.round(((data?.month_income ?? 0) - (data?.month_expense ?? 0)) / (data?.month_income ?? 1) * 100)}%`;
-            insightColor = colors.income;
-          } else if (currentStreak > 0) {
-            insightEmoji = '✨';
-            insightText = `${currentStreak}-day streak! Keep tracking to build better spending habits.`;
-            insightColor = colors.accent;
-          }
-
-          if (!insightText) return null;
-
-          return (
-            <Animated.View entering={FadeInUp.delay(275)}>
-              <View style={[styles.insightCard, { backgroundColor: insightColor + '12', borderColor: insightColor + '30' }]}>
-                <Text style={styles.insightEmoji}>{insightEmoji}</Text>
-                <Text variant="bodySm" color={colors.textSecondary} style={{ flex: 1 }}>
-                  {insightText}
-                </Text>
-              </View>
-            </Animated.View>
-          );
-        })()}
 
         {/* Recent Transactions */}
         <Animated.View entering={FadeInUp.delay(300)}>
           <View style={styles.sectionHeader}>
             <Text variant="h3">Recent Transactions</Text>
-            <Pressable onPress={() => router.push('/transactions')}>
-              <Text variant="label" color={colors.accent}>View All</Text>
-            </Pressable>
+            {(data?.recent_transactions?.length ?? 0) > 0 && (
+              <Pressable onPress={() => router.push('/transactions')}>
+                <Text variant="label" color={colors.accent}>View All</Text>
+              </Pressable>
+            )}
           </View>
           <View>
-            {data?.recent_transactions?.length === 0 && (
-              <Pressable
-                onPress={() => setQuickAddVisible(true)}
+            {(!data?.recent_transactions || data.recent_transactions.length === 0) && (
+              <View
                 style={[styles.emptyState, { backgroundColor: colors.surface, borderRadius: 16 }]}
               >
                 <Text style={{ fontSize: 40, marginBottom: 8 }}>📝</Text>
                 <Text variant="bodyMedium" color={colors.textSecondary} align="center">
-                  Start tracking your spending
+                  Your day is a clean slate
                 </Text>
                 <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginTop: 4 }}>
-                  Tap to add your first transaction
+                  Tap + to log your first expense
                 </Text>
-              </Pressable>
+              </View>
             )}
-            {data?.recent_transactions?.slice(0, 8).map((txn: TransactionWithDetails, index: number) => (
-              <TransactionRow key={txn.id} transaction={txn} isLast={index === Math.min((data.recent_transactions?.length ?? 1) - 1, 7)} />
+            {data?.recent_transactions?.slice(0, 5).map((txn: TransactionWithDetails, index: number) => (
+              <TransactionRow key={txn.id} transaction={txn} isLast={index === Math.min((data.recent_transactions?.length ?? 1) - 1, 4)} />
             ))}
+          </View>
+        </Animated.View>
+
+        {/* Monthly Overview — Compact Secondary Card */}
+        <Animated.View entering={FadeInUp.delay(350)}>
+          <View style={[styles.monthCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text variant="caption" color={colors.textSecondary}>THIS MONTH</Text>
+            <View style={styles.monthRow}>
+              <View style={styles.monthStat}>
+                <Text variant="bodySm" color={colors.textTertiary}>Income</Text>
+                <Text variant="amount" color={colors.income}>{formatCurrency(data?.month_income ?? 0)}</Text>
+              </View>
+              <View style={[styles.monthDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.monthStat}>
+                <Text variant="bodySm" color={colors.textTertiary}>Expense</Text>
+                <Text variant="amount" color={colors.expense}>{formatCurrency(data?.month_expense ?? 0)}</Text>
+              </View>
+              <View style={[styles.monthDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.monthStat}>
+                <Text variant="bodySm" color={colors.textTertiary}>Balance</Text>
+                <Text variant="amount" color={(data?.balance ?? 0) >= 0 ? colors.income : colors.expense}>
+                  {formatCurrency(data?.balance ?? 0)}
+                </Text>
+              </View>
+            </View>
           </View>
         </Animated.View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Quick Add FAB */}
-      <FAB onPress={() => setQuickAddVisible(true)} />
-
-      {/* Quick Add Sheet */}
-      <QuickAddSheet
-        visible={quickAddVisible}
-        onClose={() => setQuickAddVisible(false)}
-      />
     </SafeAreaView>
   );
 }
@@ -313,7 +354,6 @@ function TransactionRow({ transaction: txn, isLast }: { transaction: Transaction
   const formattedDate = new Date(txn.transaction_date).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
-    year: 'numeric',
   });
 
   return (
@@ -346,8 +386,8 @@ function TransactionRow({ transaction: txn, isLast }: { transaction: Transaction
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, gap: 20 },
-  
+  content: { paddingHorizontal: spacing.lg, gap: 16 },
+
   // Header
   headerRow: {
     flexDirection: 'row',
@@ -385,23 +425,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-  // Balance Hero
-  balanceCard: {
+  // Hero Card — Today's Spending
+  heroCard: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 24,
+    padding: 20,
   },
-  monthTrend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-
-  // Today's Status
-  todayCard: {
-    gap: 12,
-  },
-  todayHeader: {
+  heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -411,43 +441,48 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
   },
-  todayRow: {
+  comparisonRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 8,
   },
-  budgetRemaining: {
-    alignItems: 'flex-end',
+  comparisonPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  budgetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
   },
 
-  // Necessity Split
-  necessityCard: {
-    gap: 12,
+  // Necessity — Compact
+  necessityCompact: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 8,
   },
-  necessityBar: {
+  necessityBarCompact: {
     flexDirection: 'row',
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
     gap: 2,
   },
   necessitySegment: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
-  necessityLegend: {
+  necessityLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  legendItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
 
   // Insight Card
@@ -486,5 +521,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   txnDetails: { flex: 1, gap: 2 },
-  emptyState: { padding: 24 },
+  emptyState: { padding: 24, alignItems: 'center' },
+
+  // Monthly Overview — Compact
+  monthCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  monthStat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  monthDivider: {
+    width: 1,
+    height: 30,
+  },
 });

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useThemeColors } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
+import { QuickAddSheet } from '../../src/components/QuickAddSheet';
 
 function HomeIcon({ color, size = 24 }: { color: string; size?: number }) {
   return (
@@ -44,10 +45,11 @@ function CalendarIcon({ color, size = 24 }: { color: string; size?: number }) {
   );
 }
 
-function MenuIcon({ color, size = 24 }: { color: string; size?: number }) {
+function ProfileIcon({ color, size = 24 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M3 12h18M3 6h18M3 18h18" />
+      <Path d="M18 20a6 6 0 0 0-12 0" />
+      <Path d="M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
     </Svg>
   );
 }
@@ -57,78 +59,94 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 8);
   const tabBarHeight = 56 + bottomPadding;
+  const [quickAddVisible, setQuickAddVisible] = useState(false);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          height: tabBarHeight,
-          paddingBottom: bottomPadding,
-          paddingTop: 8,
-          elevation: 0,
-        },
-        tabBarBackground: () => (
-          <View style={[styles.tabBarBg, { backgroundColor: colors.background }]} />
-        ),
-        tabBarLabelStyle: {
-          fontFamily: 'Inter-Medium',
-          fontSize: 11,
-          marginTop: 2,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <HomeIcon color={color} />,
-        }}
-        listeners={{ tabPress: () => haptics.selection() }}
-      />
-      <Tabs.Screen
-        name="stats"
-        options={{
-          title: 'Insights',
-          tabBarIcon: ({ color }) => <InsightsIcon color={color} />,
-        }}
-        listeners={{ tabPress: () => haptics.selection() }}
-      />
-      <Tabs.Screen
-        name="add"
-        options={{
-          title: '',
-          tabBarIcon: () => (
-            <View style={[fabStyles.addButton, { backgroundColor: colors.accent }]}>
-              <PlusIcon color="#FFFFFF" />
-            </View>
+    <>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.accent,
+          tabBarInactiveTintColor: colors.textTertiary,
+          tabBarStyle: {
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            height: tabBarHeight,
+            paddingBottom: bottomPadding,
+            paddingTop: 8,
+            elevation: 0,
+          },
+          tabBarBackground: () => (
+            <View style={[styles.tabBarBg, { backgroundColor: colors.background }]} />
           ),
-          tabBarLabel: () => null,
+          tabBarLabelStyle: {
+            fontFamily: 'Inter-Medium',
+            fontSize: 11,
+            marginTop: 2,
+          },
         }}
-        listeners={{ tabPress: () => haptics.medium() }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+          }}
+          listeners={{ tabPress: () => haptics.selection() }}
+        />
+        <Tabs.Screen
+          name="stats"
+          options={{
+            title: 'Analytics',
+            tabBarIcon: ({ color }) => <InsightsIcon color={color} />,
+          }}
+          listeners={{ tabPress: () => haptics.selection() }}
+        />
+        <Tabs.Screen
+          name="add"
+          options={{
+            title: '',
+            tabBarIcon: () => (
+              <View style={[fabStyles.addButton, { backgroundColor: colors.accent }]}>
+                <PlusIcon color="#FFFFFF" />
+              </View>
+            ),
+            tabBarLabel: () => null,
+          }}
+          listeners={{
+            tabPress: (e) => {
+              // Prevent navigating to the Add tab screen
+              e.preventDefault();
+              haptics.medium();
+              setQuickAddVisible(true);
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="daily"
+          options={{
+            title: 'Daily',
+            tabBarIcon: ({ color }) => <CalendarIcon color={color} />,
+          }}
+          listeners={{ tabPress: () => haptics.selection() }}
+        />
+        <Tabs.Screen
+          name="more"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color }) => <ProfileIcon color={color} />,
+          }}
+          listeners={{ tabPress: () => haptics.selection() }}
+        />
+      </Tabs>
+
+      {/* Global QuickAddSheet — accessible from any tab */}
+      <QuickAddSheet
+        visible={quickAddVisible}
+        onClose={() => setQuickAddVisible(false)}
       />
-      <Tabs.Screen
-        name="daily"
-        options={{
-          title: 'Daily',
-          tabBarIcon: ({ color }) => <CalendarIcon color={color} />,
-        }}
-        listeners={{ tabPress: () => haptics.selection() }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: 'More',
-          tabBarIcon: ({ color }) => <MenuIcon color={color} />,
-        }}
-        listeners={{ tabPress: () => haptics.selection() }}
-      />
-    </Tabs>
+    </>
   );
 }
 

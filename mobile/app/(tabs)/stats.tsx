@@ -9,8 +9,8 @@ import Svg, { Path } from 'react-native-svg';
 import { Text, Card, Skeleton, SkeletonCard } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getDailySpending } from '../../src/api/dashboard';
-import { getCategoryBreakdown, getMonthlyTrends } from '../../src/api/analytics';
-import { formatCurrency, getCurrentMonth, getMonthName } from '../../src/utils/format';
+import { getCategoryBreakdown, getMonthlyTrends, getTopCategories } from '../../src/api/analytics';
+import { formatCurrency, getCurrentMonth, getMonthName, getMonthDateRange } from '../../src/utils/format';
 import { haptics } from '../../src/utils/haptics';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
 
@@ -49,35 +49,49 @@ function TrendDownIcon({ color, size = 16 }: { color: string; size?: number }) {
   );
 }
 
-type ViewMode = 'month' | 'trends';
+type ViewMode = 'spending' | 'trends' | 'categories';
 
-export default function InsightsScreen() {
+const VIEW_TABS: { key: ViewMode; label: string }[] = [
+  { key: 'spending', label: 'Spending' },
+  { key: 'trends', label: 'Trends' },
+  { key: 'categories', label: 'Categories' },
+];
+
+export default function AnalyticsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [viewMode, setViewMode] = useState<ViewMode>('spending');
   const [month, setMonth] = useState(getCurrentMonth());
+  const range = getMonthDateRange(month.year, month.month);
 
-  // Monthly data queries
+  // --- Spending tab queries ---
   const { data: dailyData, isLoading: dailyLoading, refetch: refetchDaily, isRefetching } = useQuery({
     queryKey: ['daily-spending', month.year, month.month],
     queryFn: () => getDailySpending(month.year, month.month),
-    enabled: viewMode === 'month',
+    enabled: viewMode === 'spending',
   });
 
   const { data: categoryData, isLoading: categoryLoading, refetch: refetchCategory } = useQuery({
     queryKey: ['analytics', 'category', month.year, month.month],
     queryFn: () => getCategoryBreakdown(month.year, month.month),
-    enabled: viewMode === 'month',
+    enabled: viewMode === 'spending',
   });
 
-  // Trends data query
+  // --- Trends tab queries ---
   const { data: trends, isLoading: trendsLoading, refetch: refetchTrends } = useQuery({
     queryKey: ['analytics', 'monthly', 6],
     queryFn: () => getMonthlyTrends(6),
     enabled: viewMode === 'trends',
   });
 
-  // Monthly calculations
+  // --- Categories tab queries ---
+  const { data: topCategories, isLoading: topCatLoading, refetch: refetchTopCat } = useQuery({
+    queryKey: ['analytics', 'top', range.start, range.end],
+    queryFn: () => getTopCategories(range.start, range.end, 10),
+    enabled: viewMode === 'categories',
+  });
+
+  // Spending calculations
   const totalExpense = dailyData?.reduce((s, d) => s + d.total, 0) ?? 0;
   const totalNecessary = dailyData?.reduce((s, d) => s + d.necessary, 0) ?? 0;
   const totalUnnecessary = dailyData?.reduce((s, d) => s + d.unnecessary, 0) ?? 0;
@@ -93,6 +107,11 @@ export default function InsightsScreen() {
   const expenseChange = latestMonth && prevMonth && prevMonth.expense > 0
     ? ((latestMonth.expense - prevMonth.expense) / prevMonth.expense) * 100
     : 0;
+
+  // Necessity percentages
+  const necPct = totalExpense > 0 ? (totalNecessary / totalExpense) * 100 : 0;
+  const unnecPct = totalExpense > 0 ? (totalUnnecessary / totalExpense) * 100 : 0;
+  const debPct = totalExpense > 0 ? (totalDebatable / totalExpense) * 100 : 0;
 
   const changeMonth = (delta: number) => {
     haptics.selection();
@@ -111,22 +130,21 @@ export default function InsightsScreen() {
   };
 
   const handleRefresh = () => {
-    if (viewMode === 'month') {
+    if (viewMode === 'spending') {
       refetchDaily();
       refetchCategory();
-    } else {
+    } else if (viewMode === 'trends') {
       refetchTrends();
+    } else {
+      refetchTopCat();
     }
   };
 
-  const isLoading = viewMode === 'month'
+  const isLoading = viewMode === 'spending'
     ? (dailyLoading || categoryLoading)
-    : trendsLoading;
-
-  // Necessity percentages
-  const necPct = totalExpense > 0 ? (totalNecessary / totalExpense) * 100 : 0;
-  const unnecPct = totalExpense > 0 ? (totalUnnecessary / totalExpense) * 100 : 0;
-  const debPct = totalExpense > 0 ? (totalDebatable / totalExpense) * 100 : 0;
+    : viewMode === 'trends'
+      ? trendsLoading
+      : topCatLoading;
 
   if (isLoading) {
     return (
@@ -159,44 +177,34 @@ export default function InsightsScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(50)} style={styles.headerRow}>
-          <Text variant="h1">Insights</Text>
+          <Text variant="h1">Analytics</Text>
         </Animated.View>
 
-        {/* View Mode Toggle */}
+        {/* 3-Segment Toggle */}
         <Animated.View entering={FadeInDown.delay(100)}>
           <View style={[styles.viewToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Pressable
-              onPress={() => handleViewModeChange('month')}
-              style={[
-                styles.viewButton,
-                viewMode === 'month' && { backgroundColor: colors.accentMuted },
-              ]}
-            >
-              <Text
-                variant="label"
-                color={viewMode === 'month' ? colors.accent : colors.textTertiary}
+            {VIEW_TABS.map((tab) => (
+              <Pressable
+                key={tab.key}
+                onPress={() => handleViewModeChange(tab.key)}
+                style={[
+                  styles.viewButton,
+                  viewMode === tab.key && { backgroundColor: colors.accentMuted },
+                ]}
               >
-                This Month
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => handleViewModeChange('trends')}
-              style={[
-                styles.viewButton,
-                viewMode === 'trends' && { backgroundColor: colors.accentMuted },
-              ]}
-            >
-              <Text
-                variant="label"
-                color={viewMode === 'trends' ? colors.accent : colors.textTertiary}
-              >
-                6 Months
-              </Text>
-            </Pressable>
+                <Text
+                  variant="label"
+                  color={viewMode === tab.key ? colors.accent : colors.textTertiary}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </Animated.View>
 
-        {viewMode === 'month' ? (
+        {/* ===== SPENDING TAB ===== */}
+        {viewMode === 'spending' && (
           <>
             {/* Month Selector */}
             <Animated.View entering={FadeInDown.delay(150)}>
@@ -378,65 +386,13 @@ export default function InsightsScreen() {
                 </ScrollView>
               </Card>
             </Animated.View>
-
-            {/* Category Breakdown */}
-            <Animated.View entering={FadeInUp.delay(350)}>
-              <View style={styles.sectionHeader}>
-                <Text variant="h3">By Category</Text>
-              </View>
-              <View>
-                {sortedCategories.length === 0 && (
-                  <View style={styles.emptyState}>
-                    <Text variant="body" color={colors.textTertiary} align="center">
-                      No spending data this month
-                    </Text>
-                  </View>
-                )}
-                {sortedCategories.map((cat, index) => {
-                  const pct = totalExpense > 0 ? (cat.total / totalExpense) * 100 : 0;
-                  const isLast = index === sortedCategories.length - 1;
-                  return (
-                    <Pressable
-                      key={cat.id}
-                      onPress={() => router.push(`/categories/${cat.id}`)}
-                      style={({ pressed }) => [
-                        styles.catRow,
-                        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-                        pressed && { backgroundColor: colors.surfacePressed },
-                      ]}
-                    >
-                      <View style={[styles.catIcon, { backgroundColor: cat.color ? cat.color + '20' : colors.surfaceElevated }]}>
-                        <CategoryIcon icon={cat.icon} size={20} color={cat.color || colors.textPrimary} />
-                      </View>
-                      <View style={styles.catDetails}>
-                        <View style={styles.catNameRow}>
-                          <Text variant="bodyMedium" numberOfLines={1} style={{ flex: 1 }}>{cat.name}</Text>
-                          <Text variant="amount" color={colors.expense}>{formatCurrency(cat.total)}</Text>
-                        </View>
-                        <View style={styles.catBarRow}>
-                          <View style={[styles.catBarBg, { backgroundColor: colors.surfacePressed }]}>
-                            <Animated.View
-                              entering={FadeInUp.delay(400 + index * 50)}
-                              style={[styles.catBarFill, {
-                                width: `${pct}%`,
-                                backgroundColor: cat.color || colors.accent,
-                              }]}
-                            />
-                          </View>
-                          <Text variant="caption" color={colors.textTertiary} style={{ minWidth: 36, textAlign: 'right' }}>
-                            {pct.toFixed(0)}%
-                          </Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </Animated.View>
           </>
-        ) : (
+        )}
+
+        {/* ===== TRENDS TAB ===== */}
+        {viewMode === 'trends' && (
           <>
-            {/* 6-Month Trends View */}
+            {/* 6-Month Trends Chart */}
             <Animated.View entering={FadeInUp.delay(150).springify()}>
               <LinearGradient
                 colors={[colors.surfaceElevated, colors.surface]}
@@ -628,6 +584,90 @@ export default function InsightsScreen() {
                 </Card>
               </Animated.View>
             )}
+          </>
+        )}
+
+        {/* ===== CATEGORIES TAB ===== */}
+        {viewMode === 'categories' && (
+          <>
+            {/* Month Selector */}
+            <Animated.View entering={FadeInDown.delay(150)}>
+              <View style={[styles.monthPill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Pressable
+                  onPress={() => changeMonth(-1)}
+                  style={({ pressed }) => [styles.monthArrow, pressed && { backgroundColor: colors.surfacePressed }]}
+                >
+                  <ChevronLeftIcon color={colors.accent} />
+                </Pressable>
+                <Text variant="h3" style={{ minWidth: 160, textAlign: 'center' }}>
+                  {getMonthName(month.year, month.month)}
+                </Text>
+                <Pressable
+                  onPress={() => changeMonth(1)}
+                  style={({ pressed }) => [styles.monthArrow, pressed && { backgroundColor: colors.surfacePressed }]}
+                >
+                  <ChevronRightIcon color={colors.accent} />
+                </Pressable>
+              </View>
+            </Animated.View>
+
+            {/* Top Categories List */}
+            <Animated.View entering={FadeInUp.delay(200)}>
+              <View style={styles.sectionHeader}>
+                <Text variant="h3">Top Categories</Text>
+                <Text variant="bodySm" color={colors.textTertiary}>
+                  {getMonthName(month.year, month.month).split(' ')[0]}
+                </Text>
+              </View>
+              {(!topCategories || topCategories.length === 0) ? (
+                <View style={styles.emptyState}>
+                  <Text variant="body" color={colors.textTertiary} align="center">
+                    No spending data for this month
+                  </Text>
+                </View>
+              ) : (
+                topCategories.map((cat, index) => {
+                  const isLast = index === topCategories.length - 1;
+                  return (
+                    <Pressable
+                      key={cat.category_name + index}
+                      onPress={() => {
+                        if (cat.category_id) router.push(`/categories/${cat.category_id}`);
+                      }}
+                      style={({ pressed }) => [
+                        styles.catRow,
+                        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                        pressed && { backgroundColor: colors.surfacePressed },
+                      ]}
+                    >
+                      <View style={[styles.catIcon, { backgroundColor: (cat.category_color || colors.accent) + '20' }]}>
+                        <CategoryIcon icon={cat.category_icon} size={20} color={cat.category_color || colors.textPrimary} />
+                      </View>
+                      <View style={styles.catDetails}>
+                        <View style={styles.catNameRow}>
+                          <Text variant="bodyMedium" numberOfLines={1} style={{ flex: 1 }}>{cat.category_name}</Text>
+                          <Text variant="amount" color={colors.expense}>{formatCurrency(cat.total)}</Text>
+                        </View>
+                        <View style={styles.catBarRow}>
+                          <View style={[styles.catBarBg, { backgroundColor: colors.surfacePressed }]}>
+                            <Animated.View
+                              entering={FadeInUp.delay(250 + index * 50)}
+                              style={[styles.catBarFill, {
+                                width: `${cat.percentage}%`,
+                                backgroundColor: cat.category_color || colors.accent,
+                              }]}
+                            />
+                          </View>
+                          <Text variant="caption" color={colors.textTertiary} style={{ minWidth: 36, textAlign: 'right' }}>
+                            {Math.round(cat.percentage)}%
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })
+              )}
+            </Animated.View>
           </>
         )}
 
