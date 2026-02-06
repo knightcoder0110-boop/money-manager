@@ -5,13 +5,12 @@ import {
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
-import { Text, Card, Button, DatePicker } from '../../src/components/ui';
+import { Text, DatePicker, Toast } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
 import { getCategories } from '../../src/api/categories';
@@ -46,6 +45,17 @@ export default function AddTransactionScreen() {
   const [date, setDate] = useState(getToday());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
+  // Toast state
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  }>({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
   const { data: allCategories } = useQuery({
     queryKey: ['categories'],
     queryFn: () => getCategories(true),
@@ -67,13 +77,20 @@ export default function AddTransactionScreen() {
     mutationFn: createTransaction,
     onSuccess: (result) => {
       if (result.error) {
-        Alert.alert('Error', result.error);
+        haptics.error();
+        showToast(result.error, 'error');
         return;
       }
       haptics.success();
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+
+      // Show success toast with amount and category
+      const savedAmount = formatCurrency(parseFloat(amount));
+      const categoryName = selectedCategory?.name || 'Unknown';
+      showToast(`${savedAmount} logged to ${categoryName}`, 'success');
+
       // Reset form
       setAmount('');
       setSelectedCategory(null);
@@ -85,7 +102,7 @@ export default function AddTransactionScreen() {
     },
     onError: () => {
       haptics.error();
-      Alert.alert('Error', 'Failed to save transaction');
+      showToast('Failed to save transaction', 'error');
     },
   });
 
@@ -107,12 +124,12 @@ export default function AddTransactionScreen() {
     const numAmount = parseFloat(amount);
     if (!numAmount || numAmount <= 0) {
       haptics.warning();
-      Alert.alert('Enter an amount');
+      showToast('How much was it?', 'error');
       return;
     }
     if (!selectedCategory) {
       haptics.warning();
-      Alert.alert('Select a category');
+      showToast('Pick a category first', 'error');
       return;
     }
 
@@ -126,6 +143,22 @@ export default function AddTransactionScreen() {
       transaction_date: date,
       event_id: selectedEventId || undefined,
     });
+  };
+
+  // Smart category selection with auto necessity default
+  const handleCategorySelect = (cat: CategoryWithSubs) => {
+    haptics.light();
+    setSelectedCategory(cat);
+    setSelectedSubcategory(null);
+
+    // Smart necessity default based on category's is_essential flag
+    if (type === 'expense') {
+      if (cat.is_essential) {
+        setNecessity('necessary');
+      } else {
+        setNecessity('unnecessary');
+      }
+    }
   };
 
   const numpadKeys = [
@@ -216,11 +249,7 @@ export default function AddTransactionScreen() {
           {categories.map((cat) => (
             <Pressable
               key={cat.id}
-              onPress={() => {
-                haptics.light();
-                setSelectedCategory(cat);
-                setSelectedSubcategory(null);
-              }}
+              onPress={() => handleCategorySelect(cat)}
               style={({ pressed }) => [
                 styles.categoryItem,
                 selectedCategory?.id === cat.id && { backgroundColor: cat.color + '12' },
@@ -330,14 +359,19 @@ export default function AddTransactionScreen() {
           }]}
         />
 
-        {/* Save Button */}
+        {/* Bottom spacer for fixed button */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Fixed Bottom Bar - Save Button always visible */}
+      <View style={[styles.bottomBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
         <Pressable
           onPress={handleSave}
           disabled={mutation.isPending}
           style={({ pressed }) => [
             styles.saveButton,
-            { 
-              backgroundColor: type === 'expense' ? colors.expense : colors.accent,
+            {
+              backgroundColor: type === 'expense' ? colors.expense : colors.income,
               opacity: pressed || mutation.isPending ? 0.8 : 1,
             },
           ]}
@@ -346,9 +380,16 @@ export default function AddTransactionScreen() {
             {mutation.isPending ? 'Saving...' : `Save ${type === 'expense' ? 'Expense' : 'Income'}`}
           </Text>
         </Pressable>
+      </View>
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+      {/* Success/Error Toast */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onDismiss={() => setToast(prev => ({ ...prev, visible: false }))}
+        duration={2500}
+      />
     </SafeAreaView>
   );
 }
@@ -448,6 +489,16 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+  },
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 12,
+    paddingBottom: 100, // Account for tab bar
+    borderTopWidth: 1,
   },
 });

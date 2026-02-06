@@ -1,76 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { Text, Card, AmountDisplay, Skeleton, SkeletonCard } from '../../src/components/ui';
+import { Text, Card, AmountDisplay, Skeleton, SkeletonCard, FAB } from '../../src/components/ui';
 import { useThemeColors, spacing } from '../../src/theme';
 import { getDashboard } from '../../src/api/dashboard';
 import { formatCurrency } from '../../src/utils/format';
 import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { TransactionWithDetails } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
+import { QuickAddSheet } from '../../src/components/QuickAddSheet';
 
 // Icons
-function BellIcon({ color, size = 24 }: { color: string; size?: number }) {
+function SettingsIcon({ color, size = 24 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <Path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-    </Svg>
-  );
-}
-
-function ExchangeIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M16 3l4 4-4 4" />
-      <Path d="M20 7H4" />
-      <Path d="M8 21l-4-4 4-4" />
-      <Path d="M4 17h16" />
-    </Svg>
-  );
-}
-
-function BillsIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <Path d="M14 2v6h6" />
-      <Path d="M16 13H8" />
-      <Path d="M16 17H8" />
-      <Path d="M10 9H8" />
-    </Svg>
-  );
-}
-
-function TransferIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M22 2L11 13" />
-      <Path d="M22 2l-7 20-4-9-9-4 20-7z" />
-    </Svg>
-  );
-}
-
-function WalletIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
-      <Path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
-    </Svg>
-  );
-}
-
-function MoreDotsIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-      <Path d="M19 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-      <Path d="M5 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+      <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <Path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
     </Svg>
   );
 }
@@ -82,17 +31,10 @@ function getGreeting(): string {
   return 'Good Evening';
 }
 
-const FEATURES = [
-  { key: 'exchange', label: 'Exchange', icon: ExchangeIcon, colorKey: 'featureExchange' as const },
-  { key: 'bills', label: 'Bills', icon: BillsIcon, colorKey: 'featureBills' as const },
-  { key: 'transfer', label: 'Transfer', icon: TransferIcon, colorKey: 'featureTransfer' as const },
-  { key: 'wallet', label: 'Categories', icon: WalletIcon, colorKey: 'featureLoans' as const },
-  { key: 'more', label: 'More', icon: MoreDotsIcon, colorKey: 'featureMore' as const },
-];
-
 export default function DashboardScreen() {
   const colors = useThemeColors();
   const router = useRouter();
+  const [quickAddVisible, setQuickAddVisible] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard'],
@@ -108,10 +50,7 @@ export default function DashboardScreen() {
             <Skeleton width={100} height={14} />
           </View>
           <SkeletonCard />
-          <View style={styles.row}>
-            <SkeletonCard />
-            <SkeletonCard />
-          </View>
+          <SkeletonCard />
           <SkeletonCard />
         </View>
       </SafeAreaView>
@@ -144,81 +83,122 @@ export default function DashboardScreen() {
               <Text variant="h2">{getGreeting()}</Text>
             </View>
           </View>
-          <Pressable style={[styles.bellButton, { backgroundColor: colors.surface }]}>
-            <BellIcon color={colors.textSecondary} size={22} />
+          <Pressable
+            onPress={() => router.push('/settings')}
+            style={[styles.settingsButton, { backgroundColor: colors.surface }]}
+          >
+            <SettingsIcon color={colors.textSecondary} size={22} />
           </Pressable>
         </Animated.View>
 
-        {/* Balance Card */}
+        {/* Balance Hero */}
         <Animated.View entering={FadeInUp.delay(150).springify()}>
-          <LinearGradient
-            colors={[colors.surfaceElevated, colors.surface]}
-            style={[styles.balanceCard, { borderColor: colors.border }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.balanceHeader}>
-              <View>
-                <Text variant="displayLarge" style={{ letterSpacing: -1 }}>
-                  {formatCurrency(data?.balance ?? 0)}
+          <View style={[styles.balanceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text variant="caption" color={colors.textSecondary}>CURRENT BALANCE</Text>
+            <Text
+              variant="displayLarge"
+              color={(data?.balance ?? 0) >= 0 ? colors.income : colors.expense}
+              style={{ letterSpacing: -1, marginTop: 4 }}
+            >
+              {formatCurrency(data?.balance ?? 0)}
+            </Text>
+            {/* Monthly Net Change */}
+            <View style={styles.monthTrend}>
+              {(() => {
+                const monthNet = (data?.month_income ?? 0) - (data?.month_expense ?? 0);
+                const isPositive = monthNet >= 0;
+                return (
+                  <>
+                    <Text variant="bodySm" color={isPositive ? colors.income : colors.expense}>
+                      {isPositive ? '+' : ''}{formatCurrency(monthNet)}
+                    </Text>
+                    <Text variant="bodySm" color={colors.textTertiary}> this month</Text>
+                  </>
+                );
+              })()}
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* Today's Status */}
+        <Animated.View entering={FadeInUp.delay(200)}>
+          <Card style={styles.todayCard}>
+            <View style={styles.todayHeader}>
+              <Text variant="caption" color={colors.textSecondary}>TODAY</Text>
+              {data?.budget_mode?.active && (
+                <View style={[styles.budgetBadge, { backgroundColor: colors.accentMuted }]}>
+                  <Text variant="caption" color={colors.accent}>BUDGET MODE</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.todayRow}>
+              <View style={{ flex: 1 }}>
+                <AmountDisplay amount={data?.today_expense ?? 0} variant="amountLarge" type="expense" />
+                {(data?.today_income ?? 0) > 0 && (
+                  <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.today_income ?? 0)} income</Text>
+                )}
+              </View>
+              {data?.budget_mode?.active && (
+                <View style={styles.budgetRemaining}>
+                  <Text variant="caption" color={colors.textTertiary}>REMAINING</Text>
+                  <Text
+                    variant="h3"
+                    color={(data?.budget_mode?.today_remaining ?? 0) >= 0 ? colors.income : colors.expense}
+                  >
+                    {formatCurrency(data?.budget_mode?.today_remaining ?? 0)}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </Card>
+        </Animated.View>
+
+        {/* Monthly Necessity Split */}
+        <Animated.View entering={FadeInUp.delay(250)}>
+          <Card style={styles.necessityCard}>
+            <Text variant="caption" color={colors.textSecondary}>THIS MONTH - NECESSITY SPLIT</Text>
+            <View style={styles.necessityBar}>
+              {(() => {
+                const necessary = data?.month_necessary ?? 0;
+                const unnecessary = data?.month_unnecessary ?? 0;
+                const debatable = data?.month_debatable ?? 0;
+                const total = necessary + unnecessary + debatable;
+                if (total === 0) return <View style={[styles.necessitySegment, { flex: 1, backgroundColor: colors.border }]} />;
+                return (
+                  <>
+                    {necessary > 0 && (
+                      <View style={[styles.necessitySegment, { flex: necessary, backgroundColor: colors.income }]} />
+                    )}
+                    {debatable > 0 && (
+                      <View style={[styles.necessitySegment, { flex: debatable, backgroundColor: colors.accent }]} />
+                    )}
+                    {unnecessary > 0 && (
+                      <View style={[styles.necessitySegment, { flex: unnecessary, backgroundColor: colors.expense }]} />
+                    )}
+                  </>
+                );
+              })()}
+            </View>
+            <View style={styles.necessityLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: colors.income }]} />
+                <Text variant="bodySm" color={colors.textSecondary}>
+                  {formatCurrency(data?.month_necessary ?? 0)}
                 </Text>
               </View>
-              <View style={[styles.cardChip, { backgroundColor: colors.expense }]} />
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+                <Text variant="bodySm" color={colors.textSecondary}>
+                  {formatCurrency(data?.month_debatable ?? 0)}
+                </Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: colors.expense }]} />
+                <Text variant="bodySm" color={colors.textSecondary}>
+                  {formatCurrency(data?.month_unnecessary ?? 0)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.cardDetails}>
-              <Text variant="body" color={colors.textSecondary} style={{ letterSpacing: 2 }}>
-                4208 •••• •••• 0210
-              </Text>
-              <Text variant="label" color={colors.textSecondary}>MONEY MANAGER</Text>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Features Grid */}
-        <Animated.View entering={FadeInUp.delay(200)}>
-          <View style={styles.sectionHeader}>
-            <Text variant="h3">Features</Text>
-            <Pressable onPress={() => router.push('/more')}>
-              <Text variant="label" color={colors.accent}>View All</Text>
-            </Pressable>
-          </View>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            contentContainerStyle={styles.featuresScroll}
-          >
-            {FEATURES.map((feature) => (
-              <Pressable
-                key={feature.key}
-                onPress={() => {
-                  if (feature.key === 'wallet') router.push('/categories');
-                  else if (feature.key === 'more') router.push('/more');
-                }}
-                style={({ pressed }) => [
-                  styles.featureItem,
-                  pressed && { transform: [{ scale: 0.95 }] },
-                ]}
-              >
-                <View style={[styles.featureIcon, { backgroundColor: (colors as any)[feature.colorKey] }]}>
-                  <feature.icon color="#FFFFFF" size={24} />
-                </View>
-                <Text variant="bodySm" color={colors.textSecondary}>{feature.label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </Animated.View>
-
-        {/* Quick Stats */}
-        <Animated.View entering={FadeInUp.delay(250)} style={styles.row}>
-          <Card style={styles.statCard}>
-            <Text variant="caption" color={colors.textSecondary}>TODAY</Text>
-            <AmountDisplay amount={data?.today_expense ?? 0} variant="amountLarge" type="expense" />
-            <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.today_income ?? 0)}</Text>
-          </Card>
-          <Card style={styles.statCard}>
-            <Text variant="caption" color={colors.textSecondary}>THIS MONTH</Text>
-            <AmountDisplay amount={data?.month_expense ?? 0} variant="amountLarge" type="expense" />
-            <Text variant="bodySm" color={colors.income}>+{formatCurrency(data?.month_income ?? 0)}</Text>
           </Card>
         </Animated.View>
 
@@ -246,6 +226,15 @@ export default function DashboardScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Quick Add FAB */}
+      <FAB onPress={() => setQuickAddVisible(true)} />
+
+      {/* Quick Add Sheet */}
+      <QuickAddSheet
+        visible={quickAddVisible}
+        onClose={() => setQuickAddVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -312,7 +301,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bellButton: {
+  settingsButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -320,42 +309,69 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Balance Card
+  // Balance Hero
   balanceCard: {
     borderRadius: 20,
     borderWidth: 1,
     padding: 24,
-    gap: 24,
   },
-  balanceHeader: {
+  monthTrend: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardChip: {
-    width: 40,
-    height: 28,
-    borderRadius: 6,
-  },
-  cardDetails: {
-    gap: 4,
+    alignItems: 'center',
+    marginTop: 8,
   },
 
-  // Features
-  featuresScroll: {
-    gap: 20,
-    paddingRight: 16,
+  // Today's Status
+  todayCard: {
+    gap: 12,
   },
-  featureItem: {
+  todayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
   },
-  featureIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  budgetBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  todayRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  budgetRemaining: {
+    alignItems: 'flex-end',
+  },
+
+  // Necessity Split
+  necessityCard: {
+    gap: 12,
+  },
+  necessityBar: {
+    flexDirection: 'row',
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    gap: 2,
+  },
+  necessitySegment: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  necessityLegend: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  legendItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 
   // Section Header
@@ -364,10 +380,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
-  // Stats
-  row: { flexDirection: 'row', gap: 12 },
-  statCard: { flex: 1, gap: 6 },
 
   // Transactions
   txnRow: {

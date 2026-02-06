@@ -40,14 +40,6 @@ function TrendingDownIcon({ color, size = 22 }: { color: string; size?: number }
   );
 }
 
-function FilterIcon({ color, size = 22 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M3 6h18M7 12h10M10 18h4" />
-    </Svg>
-  );
-}
-
 export default function StatsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
@@ -127,9 +119,6 @@ export default function StatsScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(50)} style={styles.headerRow}>
           <Text variant="h1">Statistics</Text>
-          <Pressable style={[styles.filterButton, { backgroundColor: colors.surface }]}>
-            <FilterIcon color={colors.textSecondary} />
-          </Pressable>
         </Animated.View>
 
         {/* Month Selector Pill */}
@@ -403,14 +392,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 8,
   },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   // Month Selector
   monthPill: {
     flexDirection: 'row',
