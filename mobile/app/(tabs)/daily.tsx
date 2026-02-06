@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -6,10 +6,11 @@ import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { Text, Skeleton, SkeletonCard } from '../../src/components/ui';
+import { Text, Skeleton, SkeletonCard, Card } from '../../src/components/ui';
 import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getTransactions } from '../../src/api/transactions';
-import { formatCurrency, formatDate, getToday } from '../../src/utils/format';
+import { getDailySpending } from '../../src/api/dashboard';
+import { formatCurrency, formatDate, getToday, getCurrentMonth } from '../../src/utils/format';
 import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { haptics } from '../../src/utils/haptics';
 import { TransactionWithDetails } from '../../src/types';
@@ -47,10 +48,52 @@ function addDays(dateStr: string, days: number): string {
   return d.toISOString().split('T')[0];
 }
 
+function getWeekDays(dateStr: string): string[] {
+  const date = new Date(dateStr);
+  const day = date.getDay();
+  // Adjust to get Monday (day 0 = Sunday, so Monday = 1)
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+
+  const days: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+const DAY_NAMES = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
 export default function DailyScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(getToday());
+
+  // Get week days for calendar
+  const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
+  const currentMonth = getCurrentMonth();
+
+  // Fetch daily spending for the week view
+  const { data: dailySpending } = useQuery({
+    queryKey: ['daily-spending', currentMonth.year, currentMonth.month],
+    queryFn: () => getDailySpending(currentMonth.year, currentMonth.month),
+  });
+
+  // Create a map of date -> spending for quick lookup
+  const spendingByDate = useMemo(() => {
+    const map: Record<string, number> = {};
+    dailySpending?.forEach(d => {
+      map[d.date] = d.total;
+    });
+    return map;
+  }, [dailySpending]);
+
+  // Calculate max spending for the week to determine intensity
+  const weekMaxSpending = useMemo(() => {
+    return weekDays.reduce((max, day) => Math.max(max, spendingByDate[day] || 0), 0);
+  }, [weekDays, spendingByDate]);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['transactions', { date_from: currentDate, date_to: currentDate }],
@@ -118,31 +161,99 @@ export default function DailyScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Date Navigator Pill */}
-        <Animated.View entering={FadeInDown.delay(100)}>
-          <View style={[styles.datePill, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Pressable
-              onPress={() => changeDay(-1)}
-              style={({ pressed }) => [styles.dateArrow, pressed && { backgroundColor: colors.surfacePressed }]}
-            >
-              <ChevronLeftIcon color={colors.accent} />
-            </Pressable>
-            <View style={styles.dateCenter}>
-              <Text variant="h3" style={{ textAlign: 'center' }}>
-                {formatDate(currentDate)}
-              </Text>
-              {isToday && (
-                <View style={[styles.todayBadge, { backgroundColor: colors.accentMuted }]}>
-                  <Text variant="caption" color={colors.accent} style={{ fontSize: 9 }}>TODAY</Text>
-                </View>
-              )}
+        {/* Week Calendar Strip */}
+        <Animated.View entering={FadeInDown.delay(80)}>
+          <Card style={styles.weekCalendar}>
+            <View style={styles.weekRow}>
+              {weekDays.map((day, index) => {
+                const isSelected = day === currentDate;
+                const isTodayDate = day === getToday();
+                const dayNum = new Date(day).getDate();
+                const spending = spendingByDate[day] || 0;
+
+                // Calculate intensity (0-1) based on spending relative to week max
+                const intensity = weekMaxSpending > 0 ? spending / weekMaxSpending : 0;
+                const hasSpending = spending > 0;
+
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => {
+                      haptics.selection();
+                      setCurrentDate(day);
+                    }}
+                    style={[
+                      styles.weekDay,
+                      isSelected && { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Text
+                      variant="caption"
+                      color={isSelected ? '#FFFFFF' : colors.textTertiary}
+                      style={{ fontSize: 10 }}
+                    >
+                      {DAY_NAMES[index]}
+                    </Text>
+                    <Text
+                      variant="bodyMedium"
+                      color={isSelected ? '#FFFFFF' : (isTodayDate ? colors.accent : colors.textPrimary)}
+                    >
+                      {dayNum}
+                    </Text>
+                    {/* Spending intensity indicator */}
+                    <View
+                      style={[
+                        styles.spendingDot,
+                        {
+                          backgroundColor: hasSpending
+                            ? (isSelected ? 'rgba(255,255,255,0.8)' : colors.expense)
+                            : 'transparent',
+                          opacity: hasSpending ? (0.3 + intensity * 0.7) : 0,
+                        },
+                      ]}
+                    />
+                  </Pressable>
+                );
+              })}
             </View>
-            <Pressable
-              onPress={() => changeDay(1)}
-              style={({ pressed }) => [styles.dateArrow, pressed && { backgroundColor: colors.surfacePressed }]}
-            >
-              <ChevronRightIcon color={colors.accent} />
-            </Pressable>
+            {/* Week navigation */}
+            <View style={styles.weekNav}>
+              <Pressable
+                onPress={() => {
+                  haptics.selection();
+                  setCurrentDate(addDays(weekDays[0], -7));
+                }}
+                style={({ pressed }) => [styles.weekNavButton, pressed && { opacity: 0.6 }]}
+              >
+                <ChevronLeftIcon color={colors.textSecondary} size={16} />
+                <Text variant="caption" color={colors.textSecondary}>Prev Week</Text>
+              </Pressable>
+              <Text variant="caption" color={colors.textTertiary}>
+                {formatDate(weekDays[0]).split(',')[0]} - {formatDate(weekDays[6]).split(',')[0]}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  haptics.selection();
+                  setCurrentDate(addDays(weekDays[0], 7));
+                }}
+                style={({ pressed }) => [styles.weekNavButton, pressed && { opacity: 0.6 }]}
+              >
+                <Text variant="caption" color={colors.textSecondary}>Next Week</Text>
+                <ChevronRightIcon color={colors.textSecondary} size={16} />
+              </Pressable>
+            </View>
+          </Card>
+        </Animated.View>
+
+        {/* Selected Date Display */}
+        <Animated.View entering={FadeInDown.delay(100)}>
+          <View style={styles.selectedDateRow}>
+            <Text variant="h3">{formatDate(currentDate)}</Text>
+            {isToday && (
+              <View style={[styles.todayBadge, { backgroundColor: colors.accentMuted }]}>
+                <Text variant="caption" color={colors.accent} style={{ fontSize: 9 }}>TODAY</Text>
+              </View>
+            )}
           </View>
         </Animated.View>
 
@@ -248,8 +359,12 @@ export default function DailyScreen() {
             </View>
             {transactions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text variant="body" color={colors.textTertiary} align="center">
-                  No transactions on this day
+                <Text style={{ fontSize: 32, marginBottom: 8 }}>✨</Text>
+                <Text variant="bodyMedium" color={colors.textSecondary} align="center">
+                  Clean slate!
+                </Text>
+                <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginTop: 4 }}>
+                  No transactions recorded on this day
                 </Text>
               </View>
             ) : (
@@ -315,29 +430,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Date Navigator
-  datePill: {
+  // Week Calendar
+  weekCalendar: {
+    gap: 12,
+  },
+  weekRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
   },
-  dateArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateCenter: {
+  weekDay: {
     flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: borderRadius.md,
+    gap: 4,
+  },
+  spendingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  weekNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  weekNavButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  selectedDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   todayBadge: {
     paddingHorizontal: 8,

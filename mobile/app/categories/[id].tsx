@@ -175,8 +175,12 @@ export default function CategoryDetailScreen() {
             <View style={{ gap: 8 }}>{[1, 2, 3].map((i) => <Skeleton key={i} height={50} />)}</View>
           ) : transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text variant="body" color={colors.textTertiary} align="center">
-                No transactions this month
+              <Text style={{ fontSize: 32, marginBottom: 8 }}>📊</Text>
+              <Text variant="bodyMedium" color={colors.textSecondary} align="center">
+                Nothing here yet
+              </Text>
+              <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginTop: 4 }}>
+                No transactions in this category this month
               </Text>
             </View>
           ) : (

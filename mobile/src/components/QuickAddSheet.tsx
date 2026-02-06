@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,6 +10,9 @@ import Animated, {
   FadeIn,
   SlideInDown,
   FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +26,7 @@ import { formatCurrency, getToday } from '../utils/format';
 import { CategoryWithSubs, Subcategory, Necessity } from '../types';
 import { CategoryIcon } from './icons/category-icon';
 import { NECESSITY_COLORS } from '../constants';
+import { useAppStore } from '../store/app';
 
 // Icons
 function BackspaceIcon({ color, size = 24 }: { color: string; size?: number }) {
@@ -51,6 +55,54 @@ function CheckIcon({ color, size = 20 }: { color: string; size?: number }) {
   );
 }
 
+// Animated Category Chip with bounce effect
+function AnimatedCategoryChip({
+  cat,
+  isSelected,
+  onPress,
+}: {
+  cat: CategoryWithSubs;
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    scale.value = withSpring(1.1, { damping: 8, stiffness: 400 }, () => {
+      scale.value = withSpring(1, { damping: 10, stiffness: 300 });
+    });
+    onPress();
+  };
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={handlePress}
+        style={[
+          styles.categoryChip,
+          {
+            backgroundColor: isSelected ? cat.color + '20' : colors.surface,
+            borderColor: isSelected ? cat.color : colors.border,
+          },
+        ]}
+      >
+        <CategoryIcon icon={cat.icon} size={18} color={cat.color || colors.textPrimary} />
+        <Text
+          variant="bodySm"
+          color={isSelected ? colors.textPrimary : colors.textSecondary}
+        >
+          {cat.name}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 interface QuickAddSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -62,6 +114,15 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+
+  // Category usage and streak tracking from store
+  const {
+    getFrequentCategoryIds,
+    incrementCategoryUsage,
+    setLastCategory,
+    updateStreak,
+    showCelebration,
+  } = useAppStore();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -80,10 +141,32 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
     queryFn: () => getCategories(true),
   });
 
-  // Filter categories based on type
-  const categories = allCategories?.filter(c =>
-    type === 'income' ? c.is_income : !c.is_income
-  ) ?? [];
+  // Filter and sort categories - frequent ones first
+  const categories = useMemo(() => {
+    const filtered = allCategories?.filter(c =>
+      type === 'income' ? c.is_income : !c.is_income
+    ) ?? [];
+
+    const frequentIds = getFrequentCategoryIds(6);
+
+    // Split into frequent and rest
+    const frequent: CategoryWithSubs[] = [];
+    const rest: CategoryWithSubs[] = [];
+
+    filtered.forEach(cat => {
+      if (frequentIds.includes(cat.id)) {
+        frequent.push(cat);
+      } else {
+        rest.push(cat);
+      }
+    });
+
+    // Sort frequent by their frequency rank
+    frequent.sort((a, b) => frequentIds.indexOf(a.id) - frequentIds.indexOf(b.id));
+
+    // Return frequent first, then rest
+    return [...frequent, ...rest];
+  }, [allCategories, type, getFrequentCategoryIds]);
 
   const mutation = useMutation({
     mutationFn: createTransaction,
@@ -98,18 +181,34 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
 
+      // Track category usage for frequency sorting
+      if (selectedCategory) {
+        incrementCategoryUsage(selectedCategory.id);
+        setLastCategory(type, selectedCategory.id);
+      }
+
+      // Update streak and check for milestone
+      const { newMilestone } = updateStreak(getToday());
+
       const savedAmount = formatCurrency(parseFloat(amount));
       const categoryName = selectedCategory?.name || 'Unknown';
-      setToast({
-        visible: true,
-        message: `${savedAmount} logged to ${categoryName}`,
-        type: 'success',
-      });
+
+      // Show milestone celebration or regular toast
+      if (newMilestone) {
+        // Show the celebration modal for milestones
+        showCelebration(newMilestone);
+      } else {
+        setToast({
+          visible: true,
+          message: `${savedAmount} logged to ${categoryName}`,
+          type: 'success',
+        });
+      }
 
       // Close after brief delay to show toast
       setTimeout(() => {
         onClose();
-      }, 1200);
+      }, 1500);
     },
     onError: () => {
       haptics.error();
@@ -320,30 +419,12 @@ export function QuickAddSheet({ visible, onClose }: QuickAddSheetProps) {
               contentContainerStyle={styles.categoryScroll}
             >
               {categories.map((cat) => (
-                <Pressable
+                <AnimatedCategoryChip
                   key={cat.id}
+                  cat={cat}
+                  isSelected={selectedCategory?.id === cat.id}
                   onPress={() => handleCategorySelect(cat)}
-                  style={({ pressed }) => [
-                    styles.categoryChip,
-                    {
-                      backgroundColor: selectedCategory?.id === cat.id
-                        ? cat.color + '20'
-                        : colors.surface,
-                      borderColor: selectedCategory?.id === cat.id
-                        ? cat.color
-                        : colors.border,
-                    },
-                    pressed && { opacity: 0.7 },
-                  ]}
-                >
-                  <CategoryIcon icon={cat.icon} size={18} color={cat.color || colors.textPrimary} />
-                  <Text
-                    variant="bodySm"
-                    color={selectedCategory?.id === cat.id ? colors.textPrimary : colors.textSecondary}
-                  >
-                    {cat.name}
-                  </Text>
-                </Pressable>
+                />
               ))}
             </ScrollView>
           </View>

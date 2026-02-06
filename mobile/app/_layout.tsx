@@ -9,8 +9,10 @@ import * as SystemUI from 'expo-system-ui';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/store/auth';
+import { useAppStore } from '../src/store/app';
 import { colors } from '../src/theme';
 import { UpdateChecker } from '../src/components/UpdateChecker';
+import { MilestoneCelebration } from '../src/components/MilestoneCelebration';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,6 +53,7 @@ export default function RootLayout() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const initialize = useAuthStore((s) => s.initialize);
   const isLoading = useAuthStore((s) => s.isLoading);
+  const { celebrationMilestone, dismissCelebration } = useAppStore();
   const scheme = useColorScheme();
   const theme = scheme === 'light' ? colors.light : colors.dark;
 
@@ -98,6 +101,11 @@ export default function RootLayout() {
         <View style={[styles.flex, { backgroundColor: theme.background }]}>
           <StatusBar style={scheme === 'light' ? 'dark' : 'light'} />
           <UpdateChecker />
+          <MilestoneCelebration
+            visible={celebrationMilestone !== null}
+            milestone={celebrationMilestone ?? 0}
+            onDismiss={dismissCelebration}
+          />
           <AuthGate>
             <Stack
               screenOptions={{

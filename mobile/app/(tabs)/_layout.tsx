@@ -15,11 +15,14 @@ function HomeIcon({ color, size = 24 }: { color: string; size?: number }) {
   );
 }
 
-function StatsIcon({ color, size = 24 }: { color: string; size?: number }) {
+function InsightsIcon({ color, size = 24 }: { color: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M3 3v16a2 2 0 0 0 2 2h16" />
-      <Path d="M7 16l4-8 4 4 4-8" />
+      <Path d="M2 12h5l2-3 4 6 2-4 3 2h4" />
+      <Path d="M12 2v2" />
+      <Path d="M12 20v2" />
+      <Path d="M4.93 4.93l1.41 1.41" />
+      <Path d="M17.66 17.66l1.41 1.41" />
     </Svg>
   );
 }
@@ -91,8 +94,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: 'Stats',
-          tabBarIcon: ({ color }) => <StatsIcon color={color} />,
+          title: 'Insights',
+          tabBarIcon: ({ color }) => <InsightsIcon color={color} />,
         }}
         listeners={{ tabPress: () => haptics.selection() }}
       />

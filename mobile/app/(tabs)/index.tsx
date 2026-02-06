@@ -6,13 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { Text, Card, AmountDisplay, Skeleton, SkeletonCard, FAB } from '../../src/components/ui';
-import { useThemeColors, spacing } from '../../src/theme';
+import { useThemeColors, spacing, borderRadius } from '../../src/theme';
 import { getDashboard } from '../../src/api/dashboard';
 import { formatCurrency } from '../../src/utils/format';
 import { TRANSACTION_TYPE_COLORS } from '../../src/constants';
 import { TransactionWithDetails } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
 import { QuickAddSheet } from '../../src/components/QuickAddSheet';
+import { useAppStore } from '../../src/store/app';
 
 // Icons
 function SettingsIcon({ color, size = 24 }: { color: string; size?: number }) {
@@ -35,6 +36,7 @@ export default function DashboardScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const [quickAddVisible, setQuickAddVisible] = useState(false);
+  const { streak } = useAppStore();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['dashboard'],
@@ -83,12 +85,21 @@ export default function DashboardScreen() {
               <Text variant="h2">{getGreeting()}</Text>
             </View>
           </View>
-          <Pressable
-            onPress={() => router.push('/settings')}
-            style={[styles.settingsButton, { backgroundColor: colors.surface }]}
-          >
-            <SettingsIcon color={colors.textSecondary} size={22} />
-          </Pressable>
+          <View style={styles.headerRight}>
+            {streak.currentStreak > 0 && (
+              <View style={[styles.streakBadge, { backgroundColor: colors.warning + '20' }]}>
+                <Text variant="label" color={colors.warning}>
+                  🔥 {streak.currentStreak}
+                </Text>
+              </View>
+            )}
+            <Pressable
+              onPress={() => router.push('/settings')}
+              style={[styles.settingsButton, { backgroundColor: colors.surface }]}
+            >
+              <SettingsIcon color={colors.textSecondary} size={22} />
+            </Pressable>
+          </View>
         </Animated.View>
 
         {/* Balance Hero */}
@@ -202,6 +213,54 @@ export default function DashboardScreen() {
           </Card>
         </Animated.View>
 
+        {/* Smart Insight Card */}
+        {(() => {
+          // Generate a smart insight based on available data
+          const unnecessary = data?.month_unnecessary ?? 0;
+          const total = (data?.month_necessary ?? 0) + unnecessary + (data?.month_debatable ?? 0);
+          const unnecessaryPercent = total > 0 ? Math.round((unnecessary / total) * 100) : 0;
+          const currentStreak = streak.currentStreak;
+
+          let insightEmoji = '💡';
+          let insightText = '';
+          let insightColor = colors.accent;
+
+          if (currentStreak >= 7) {
+            insightEmoji = '🔥';
+            insightText = `Amazing! ${currentStreak} days of tracking. You're building a great habit!`;
+            insightColor = colors.warning;
+          } else if (unnecessaryPercent > 40) {
+            insightEmoji = '⚠️';
+            insightText = `${unnecessaryPercent}% of spending this month was marked unnecessary. Small cuts add up!`;
+            insightColor = colors.expense;
+          } else if (unnecessaryPercent < 20 && total > 0) {
+            insightEmoji = '🎯';
+            insightText = `Great job! Only ${unnecessaryPercent}% unnecessary spending this month. Keep it up!`;
+            insightColor = colors.income;
+          } else if ((data?.month_income ?? 0) > (data?.month_expense ?? 0)) {
+            insightEmoji = '📈';
+            insightText = `You're in the green this month! Savings rate: ${Math.round(((data?.month_income ?? 0) - (data?.month_expense ?? 0)) / (data?.month_income ?? 1) * 100)}%`;
+            insightColor = colors.income;
+          } else if (currentStreak > 0) {
+            insightEmoji = '✨';
+            insightText = `${currentStreak}-day streak! Keep tracking to build better spending habits.`;
+            insightColor = colors.accent;
+          }
+
+          if (!insightText) return null;
+
+          return (
+            <Animated.View entering={FadeInUp.delay(275)}>
+              <View style={[styles.insightCard, { backgroundColor: insightColor + '12', borderColor: insightColor + '30' }]}>
+                <Text style={styles.insightEmoji}>{insightEmoji}</Text>
+                <Text variant="bodySm" color={colors.textSecondary} style={{ flex: 1 }}>
+                  {insightText}
+                </Text>
+              </View>
+            </Animated.View>
+          );
+        })()}
+
         {/* Recent Transactions */}
         <Animated.View entering={FadeInUp.delay(300)}>
           <View style={styles.sectionHeader}>
@@ -212,11 +271,18 @@ export default function DashboardScreen() {
           </View>
           <View>
             {data?.recent_transactions?.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text variant="body" color={colors.textTertiary} align="center">
-                  No transactions yet
+              <Pressable
+                onPress={() => setQuickAddVisible(true)}
+                style={[styles.emptyState, { backgroundColor: colors.surface, borderRadius: 16 }]}
+              >
+                <Text style={{ fontSize: 40, marginBottom: 8 }}>📝</Text>
+                <Text variant="bodyMedium" color={colors.textSecondary} align="center">
+                  Start tracking your spending
                 </Text>
-              </View>
+                <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginTop: 4 }}>
+                  Tap to add your first transaction
+                </Text>
+              </Pressable>
             )}
             {data?.recent_transactions?.slice(0, 8).map((txn: TransactionWithDetails, index: number) => (
               <TransactionRow key={txn.id} transaction={txn} isLast={index === Math.min((data.recent_transactions?.length ?? 1) - 1, 7)} />
@@ -308,6 +374,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  streakBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
 
   // Balance Hero
   balanceCard: {
@@ -372,6 +448,19 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+
+  // Insight Card
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  insightEmoji: {
+    fontSize: 24,
   },
 
   // Section Header

@@ -7,7 +7,12 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Svg, { Path } from 'react-native-svg';
 import { Text, DatePicker, Toast } from '../../src/components/ui';
@@ -20,6 +25,57 @@ import { formatCurrency, getToday } from '../../src/utils/format';
 import { NECESSITY_COLORS } from '../../src/constants';
 import { Necessity, TransactionType, CategoryWithSubs, Subcategory } from '../../src/types';
 import { CategoryIcon } from '../../src/components/icons/category-icon';
+import { useAppStore } from '../../src/store/app';
+
+// Animated Category Item with bounce effect
+function AnimatedCategoryItem({
+  cat,
+  isSelected,
+  onPress,
+}: {
+  cat: CategoryWithSubs;
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    scale.value = withSpring(1.1, { damping: 8, stiffness: 400 }, () => {
+      scale.value = withSpring(1, { damping: 10, stiffness: 300 });
+    });
+    onPress();
+  };
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={handlePress}
+        style={[
+          styles.categoryItem,
+          isSelected && { backgroundColor: cat.color + '12' },
+        ]}
+      >
+        <View style={[styles.categoryIconBg, { backgroundColor: cat.color + '20' }]}>
+          <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
+        </View>
+        <Text
+          variant="caption"
+          numberOfLines={1}
+          align="center"
+          color={isSelected ? colors.textPrimary : colors.textTertiary}
+          style={{ textTransform: 'none', letterSpacing: 0 }}
+        >
+          {cat.name}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 // Backspace Icon
 function BackspaceIcon({ color, size = 24 }: { color: string; size?: number }) {
@@ -35,6 +91,7 @@ function BackspaceIcon({ color, size = 24 }: { color: string; size?: number }) {
 export default function AddTransactionScreen() {
   const colors = useThemeColors();
   const queryClient = useQueryClient();
+  const { incrementCategoryUsage, setLastCategory, updateStreak, showCelebration } = useAppStore();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -86,10 +143,25 @@ export default function AddTransactionScreen() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
 
-      // Show success toast with amount and category
+      // Track category usage for frequency sorting
+      if (selectedCategory) {
+        incrementCategoryUsage(selectedCategory.id);
+        setLastCategory(type, selectedCategory.id);
+      }
+
+      // Update streak and check for milestone
+      const { newMilestone } = updateStreak(date);
+
+      // Show milestone celebration or regular toast
       const savedAmount = formatCurrency(parseFloat(amount));
       const categoryName = selectedCategory?.name || 'Unknown';
-      showToast(`${savedAmount} logged to ${categoryName}`, 'success');
+
+      if (newMilestone) {
+        // Show the celebration modal for milestones
+        showCelebration(newMilestone);
+      } else {
+        showToast(`${savedAmount} logged to ${categoryName}`, 'success');
+      }
 
       // Reset form
       setAmount('');
@@ -247,24 +319,12 @@ export default function AddTransactionScreen() {
         </Text>
         <View style={styles.categoryGrid}>
           {categories.map((cat) => (
-            <Pressable
+            <AnimatedCategoryItem
               key={cat.id}
+              cat={cat}
+              isSelected={selectedCategory?.id === cat.id}
               onPress={() => handleCategorySelect(cat)}
-              style={({ pressed }) => [
-                styles.categoryItem,
-                selectedCategory?.id === cat.id && { backgroundColor: cat.color + '12' },
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <View style={[styles.categoryIconBg, { backgroundColor: cat.color + '20' }]}>
-                <CategoryIcon icon={cat.icon} size={22} color={cat.color || colors.textPrimary} />
-              </View>
-              <Text variant="caption" numberOfLines={1} align="center" color={
-                selectedCategory?.id === cat.id ? colors.textPrimary : colors.textTertiary
-              } style={{ textTransform: 'none', letterSpacing: 0 }}>
-                {cat.name}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 

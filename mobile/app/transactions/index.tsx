@@ -188,8 +188,12 @@ export default function TransactionsListScreen() {
             </View>
           ) : (
             <View style={styles.empty}>
-              <Text variant="body" color={colors.textTertiary} align="center">
-                No transactions found
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>🔍</Text>
+              <Text variant="bodyMedium" color={colors.textSecondary} align="center">
+                No transactions match your filters
+              </Text>
+              <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginTop: 4 }}>
+                Try adjusting your search or date range
               </Text>
             </View>
           )
