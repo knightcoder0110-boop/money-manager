@@ -1,6 +1,6 @@
 "use server";
 
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type {
   Transaction,
   TransactionWithDetails,
@@ -9,17 +9,18 @@ import type {
   BudgetModeSettings,
 } from "@/types";
 
-export async function getBalanceData(): Promise<{
+export async function getBalanceData(userId?: string): Promise<{
   balance: number;
   budget_mode: { active: boolean; daily_limit: number; today_remaining: number };
 }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const today = new Date().toISOString().split("T")[0];
 
   const [allTxResult, todayTxResult, settingsResult] = await Promise.all([
-    supabase.from("transactions").select("type, amount"),
-    supabase.from("transactions").select("type, amount").eq("transaction_date", today).eq("type", "expense"),
-    supabase.from("settings").select("key, value").in("key", ["initial_balance", "budget_mode"]),
+    supabase.from("transactions").select("type, amount").eq("user_id", uid),
+    supabase.from("transactions").select("type, amount").eq("user_id", uid).eq("transaction_date", today).eq("type", "expense"),
+    supabase.from("settings").select("key, value").eq("user_id", uid).in("key", ["initial_balance", "budget_mode"]),
   ]);
 
   let initialBalance = 0;
@@ -56,7 +57,7 @@ export async function getBalanceData(): Promise<{
   };
 }
 
-export async function getDashboardData(): Promise<{
+export async function getDashboardData(userId?: string): Promise<{
   balance: number;
   today_expense: number;
   today_income: number;
@@ -74,12 +75,12 @@ export async function getDashboardData(): Promise<{
   category_breakdown: CategoryBreakdownItem[];
 }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const today = new Date().toISOString().split("T")[0];
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
-  // Run all queries in parallel
   const [
     allTxResult,
     todayTxResult,
@@ -87,36 +88,35 @@ export async function getDashboardData(): Promise<{
     settingsResult,
     recentTxResult,
   ] = await Promise.all([
-    // All transactions for balance calculation
-    supabase
-      .from("transactions")
-      .select("type, amount"),
-    // Today's transactions
     supabase
       .from("transactions")
       .select("type, amount")
+      .eq("user_id", uid),
+    supabase
+      .from("transactions")
+      .select("type, amount")
+      .eq("user_id", uid)
       .eq("transaction_date", today),
-    // This month's transactions with category info
     supabase
       .from("transactions")
       .select("type, amount, necessity, category_id, categories(id, name, icon, color)")
+      .eq("user_id", uid)
       .gte("transaction_date", monthStart)
       .lte("transaction_date", today),
-    // Settings
     supabase
       .from("settings")
       .select("key, value")
+      .eq("user_id", uid)
       .in("key", ["initial_balance", "budget_mode"]),
-    // Recent 10 transactions with details
     supabase
       .from("transactions")
       .select("*, categories(*), subcategories(*), events(*)")
+      .eq("user_id", uid)
       .order("transaction_date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(10),
   ]);
 
-  // Parse settings
   let initialBalance = 0;
   let budgetModeSettings: BudgetModeSettings = { active: false, daily_limit: 500, activated_at: null };
 
@@ -128,7 +128,6 @@ export async function getDashboardData(): Promise<{
     }
   }
 
-  // Calculate balance: initial_balance + SUM(income) - SUM(expense)
   let totalIncome = 0;
   let totalExpense = 0;
   for (const tx of allTxResult.data ?? []) {
@@ -138,7 +137,6 @@ export async function getDashboardData(): Promise<{
   }
   const balance = initialBalance + totalIncome - totalExpense;
 
-  // Today totals
   let todayExpense = 0;
   let todayIncome = 0;
   for (const tx of todayTxResult.data ?? []) {
@@ -147,7 +145,6 @@ export async function getDashboardData(): Promise<{
     else todayExpense += amt;
   }
 
-  // Month totals and category breakdown
   let monthExpense = 0;
   let monthIncome = 0;
   let monthNecessary = 0;
@@ -167,7 +164,6 @@ export async function getDashboardData(): Promise<{
     else if (tx.necessity === "unnecessary") monthUnnecessary += amt;
     else if (tx.necessity === "debatable") monthDebatable += amt;
 
-    // Category breakdown (expenses only)
     const cat = tx.categories as unknown as { id: string; name: string; icon: string; color: string } | null;
     if (cat) {
       const existing = categoryTotals.get(cat.id);
@@ -189,7 +185,6 @@ export async function getDashboardData(): Promise<{
     (a, b) => b.total - a.total
   );
 
-  // Map recent transactions to TransactionWithDetails
   const recent_transactions: TransactionWithDetails[] = (recentTxResult.data ?? []).map(
     (row: Record<string, unknown>) => {
       const { categories, subcategories, events, ...tx } = row;
@@ -223,22 +218,23 @@ export async function getDashboardData(): Promise<{
   };
 }
 
-export async function getDailySpending(params: {
-  year: number;
-  month: number;
-}): Promise<DailySpending[]> {
+export async function getDailySpending(
+  params: { year: number; month: number },
+  userId?: string
+): Promise<DailySpending[]> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const monthStr = String(params.month).padStart(2, "0");
   const startDate = `${params.year}-${monthStr}-01`;
 
-  // Get last day of month
   const lastDay = new Date(params.year, params.month, 0).getDate();
   const endDate = `${params.year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
 
   const { data, error } = await supabase
     .from("transactions")
     .select("transaction_date, amount, necessity")
+    .eq("user_id", uid)
     .eq("type", "expense")
     .gte("transaction_date", startDate)
     .lte("transaction_date", endDate)
@@ -249,10 +245,8 @@ export async function getDailySpending(params: {
     return [];
   }
 
-  // Aggregate by date
   const dailyMap = new Map<string, DailySpending>();
 
-  // Initialize all days of the month
   for (let d = 1; d <= lastDay; d++) {
     const dateStr = `${params.year}-${monthStr}-${String(d).padStart(2, "0")}`;
     dailyMap.set(dateStr, { date: dateStr, total: 0, necessary: 0, unnecessary: 0 });

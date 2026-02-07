@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 });
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLocked, isLoading, serverUrl } = useAuthStore();
+  const { session, isLoading, serverUrl } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
 
@@ -34,17 +34,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const isAuthenticated = !!session;
 
-    if (!serverUrl) {
+    if (!serverUrl || !isAuthenticated) {
       if (!inAuthGroup) {
         router.replace('/(auth)/lock');
       }
-    } else if (isLocked && !inAuthGroup) {
-      router.replace('/(auth)/lock');
-    } else if (!isLocked && inAuthGroup) {
+    } else if (isAuthenticated && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [isLocked, isLoading, serverUrl, segments]);
+  }, [session, isLoading, serverUrl, segments]);
 
   return <>{children}</>;
 }

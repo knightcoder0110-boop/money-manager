@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { createSubcategory } from "@/actions/categories";
 
 export async function POST(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
-    const result = await createSubcategory(body);
+    const result = await createSubcategory(body, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../_auth";
+import { getAuthUser, unauthorized } from "../_auth";
 import { getEventsWithTotals, createEvent } from "@/actions/events";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       ? parseInt(searchParams.get("offset")!, 10)
       : undefined;
 
-    const result = await getEventsWithTotals({ limit, offset });
+    const result = await getEventsWithTotals({ limit, offset }, user.id);
 
     const data = result.data.map((event) => ({
       id: event.id,
@@ -38,11 +39,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
-    const result = await createEvent(body);
+    const result = await createEvent(body, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../_auth";
+import { getAuthUser, unauthorized } from "../_auth";
 import { getCategories, createCategory } from "@/actions/categories";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       options.type = searchParams.get("type") as "expense" | "income";
     }
 
-    const data = await getCategories(options);
+    const data = await getCategories(options, user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile get categories error:", error);
@@ -33,11 +34,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
-    const result = await createCategory(body);
+    const result = await createCategory(body, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

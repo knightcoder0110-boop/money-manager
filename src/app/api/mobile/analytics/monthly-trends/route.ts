@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { getMonthlyTrends } from "@/actions/analytics";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
       ? parseInt(searchParams.get("months")!, 10)
       : undefined;
 
-    const data = await getMonthlyTrends(months);
+    const data = await getMonthlyTrends(months, user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile monthly trends error:", error);

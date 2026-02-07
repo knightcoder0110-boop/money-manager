@@ -1,72 +1,61 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
-const TOKEN_KEY = 'app_session_token';
 const SERVER_URL_KEY = 'server_url';
 const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL || '';
 
 interface AuthStore {
-  isLocked: boolean;
-  token: string | null;
-  serverUrl: string;
+  session: Session | null;
   isLoading: boolean;
-  hasPassword: boolean;
+  serverUrl: string;
 
   initialize: () => Promise<void>;
-  setToken: (token: string) => Promise<void>;
-  clearToken: () => Promise<void>;
+  setSession: (session: Session | null) => void;
   setServerUrl: (url: string) => Promise<void>;
-  lock: () => void;
-  unlock: (token: string) => Promise<void>;
-  setHasPassword: (val: boolean) => void;
+  signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-  isLocked: true,
-  token: null,
-  serverUrl: DEFAULT_SERVER_URL,
+export const useAuthStore = create<AuthStore>((set) => ({
+  session: null,
   isLoading: true,
-  hasPassword: false,
+  serverUrl: DEFAULT_SERVER_URL,
 
   initialize: async () => {
     try {
-      const [token, serverUrl] = await Promise.all([
-        SecureStore.getItemAsync(TOKEN_KEY),
-        SecureStore.getItemAsync(SERVER_URL_KEY),
-      ]);
+      // Load server URL from AsyncStorage
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      const storedUrl = await AsyncStorage.getItem(SERVER_URL_KEY);
+
+      // Get current Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+
       set({
-        token,
-        serverUrl: serverUrl || DEFAULT_SERVER_URL,
-        isLocked: !token,
+        session,
+        serverUrl: storedUrl || DEFAULT_SERVER_URL,
         isLoading: false,
+      });
+
+      // Listen for auth state changes (token refresh, sign out, etc.)
+      supabase.auth.onAuthStateChange((_event, session) => {
+        set({ session });
       });
     } catch {
       set({ isLoading: false });
     }
   },
 
-  setToken: async (token: string) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-    set({ token, isLocked: false });
-  },
-
-  clearToken: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    set({ token: null, isLocked: true });
-  },
+  setSession: (session) => set({ session }),
 
   setServerUrl: async (url: string) => {
     const normalized = url.replace(/\/$/, '');
-    await SecureStore.setItemAsync(SERVER_URL_KEY, normalized);
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    await AsyncStorage.setItem(SERVER_URL_KEY, normalized);
     set({ serverUrl: normalized });
   },
 
-  lock: () => set({ isLocked: true }),
-
-  unlock: async (token: string) => {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-    set({ token, isLocked: false });
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ session: null });
   },
-
-  setHasPassword: (val: boolean) => set({ hasPassword: val }),
 }));

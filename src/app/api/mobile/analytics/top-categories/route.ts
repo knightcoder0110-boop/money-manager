@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { getTopCategories } from "@/actions/analytics";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     if (searchParams.has("limit"))
       params.limit = parseInt(searchParams.get("limit")!, 10);
 
-    const data = await getTopCategories(params);
+    const data = await getTopCategories(params, user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile top categories error:", error);

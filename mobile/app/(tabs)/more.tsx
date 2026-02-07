@@ -106,7 +106,7 @@ export default function ProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { serverUrl, setServerUrl, clearToken } = useAuthStore();
+  const { serverUrl, setServerUrl, signOut, session } = useAuthStore();
   const streak = useAppStore((s) => s.streak);
   const streakInfo = { current: streak.currentStreak, longest: streak.longestStreak, total: streak.totalTransactions };
 
@@ -184,14 +184,14 @@ export default function ProfileScreen() {
     Alert.alert('Server URL updated');
   };
 
-  const handleLockApp = () => {
-    Alert.alert('Lock App', 'This will lock the app and require your PIN to re-enter.', [
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Lock',
+        text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          await clearToken();
+          await signOut();
           haptics.medium();
         },
       },
@@ -407,9 +407,14 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Lock App */}
+          {/* Sign Out */}
+          {session?.user?.email && (
+            <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginBottom: 4 }}>
+              Signed in as {session.user.email}
+            </Text>
+          )}
           <Pressable
-            onPress={handleLockApp}
+            onPress={handleSignOut}
             style={({ pressed }) => [
               styles.lockButton,
               { backgroundColor: colors.dangerMuted },
@@ -417,7 +422,7 @@ export default function ProfileScreen() {
             ]}
           >
             <LockIcon color={colors.danger} />
-            <Text variant="label" color={colors.danger}>Lock App</Text>
+            <Text variant="label" color={colors.danger}>Sign Out</Text>
           </Pressable>
         </Animated.View>
 

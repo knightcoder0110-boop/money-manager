@@ -81,7 +81,7 @@ export default function SettingsScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { serverUrl, setServerUrl, clearToken } = useAuthStore();
+  const { signOut, session } = useAuthStore();
 
   const { data: settings } = useQuery({
     queryKey: ['settings'],
@@ -91,8 +91,6 @@ export default function SettingsScreen() {
   const [initialBalance, setInitialBalance] = useState('');
   const [budgetActive, setBudgetActive] = useState(false);
   const [dailyLimit, setDailyLimit] = useState('');
-  const [urlInput, setUrlInput] = useState(serverUrl);
-
   useEffect(() => {
     if (settings) {
       const balance = settings.initial_balance as { amount?: number };
@@ -150,21 +148,14 @@ export default function SettingsScreen() {
     budgetMutation.mutate({ active: budgetActive, limit });
   };
 
-  const handleUpdateUrl = async () => {
-    if (!urlInput?.trim()) return;
-    await setServerUrl(urlInput.trim());
-    haptics.success();
-    Alert.alert('Server URL updated');
-  };
-
-  const handleLogout = () => {
-    Alert.alert('Lock App', 'This will lock the app and require your PIN to re-enter.', [
+  const handleSignOut = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Lock',
+        text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          await clearToken();
+          await signOut();
           haptics.medium();
         },
       },
@@ -273,38 +264,6 @@ export default function SettingsScreen() {
           )}
         </Animated.View>
 
-        {/* Server Connection */}
-        <Animated.View entering={FadeInUp.delay(240)}>
-          <View style={styles.sectionHeader}>
-            <View style={[styles.sectionIcon, { backgroundColor: colors.featureTransfer + '20' }]}>
-              <ServerIcon color={colors.featureTransfer} size={18} />
-            </View>
-            <Text variant="h3">Server Connection</Text>
-          </View>
-          <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
-            <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Server URL</Text>
-            <TextInput
-              placeholder="https://your-server.com"
-              placeholderTextColor={colors.textTertiary}
-              value={urlInput}
-              onChangeText={setUrlInput}
-              autoCapitalize="none"
-              keyboardType="url"
-              style={[styles.textInput, { color: colors.textPrimary }]}
-            />
-          </View>
-          <Pressable
-            onPress={handleUpdateUrl}
-            style={({ pressed }) => [
-              styles.actionButton,
-              { backgroundColor: colors.accentMuted },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <Text variant="label" color={colors.accent}>Update URL</Text>
-          </Pressable>
-        </Animated.View>
-
         {/* Manage Categories */}
         <Animated.View entering={FadeInUp.delay(310)}>
           <Pressable
@@ -326,10 +285,15 @@ export default function SettingsScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Lock App */}
+        {/* Account / Sign Out */}
         <Animated.View entering={FadeInUp.delay(380)}>
+          {session?.user?.email && (
+            <Text variant="bodySm" color={colors.textTertiary} align="center" style={{ marginBottom: 8 }}>
+              Signed in as {session.user.email}
+            </Text>
+          )}
           <Pressable
-            onPress={handleLogout}
+            onPress={handleSignOut}
             style={({ pressed }) => [
               styles.lockButton,
               { backgroundColor: colors.dangerMuted },
@@ -337,7 +301,7 @@ export default function SettingsScreen() {
             ]}
           >
             <LockIcon color={colors.danger} size={18} />
-            <Text variant="label" color={colors.danger}>Lock App</Text>
+            <Text variant="label" color={colors.danger}>Sign Out</Text>
           </Pressable>
         </Animated.View>
 

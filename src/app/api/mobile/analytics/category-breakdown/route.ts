@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { getCategoryBreakdown } from "@/actions/analytics";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const category_id = searchParams.get("category_id") ?? undefined;
 
-    const data = await getCategoryBreakdown({ year, month, category_id });
+    const data = await getCategoryBreakdown({ year, month, category_id }, user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile category breakdown error:", error);

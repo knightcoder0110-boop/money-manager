@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../_auth";
+import { getAuthUser, unauthorized } from "../_auth";
 import { getTransactions, createTransaction } from "@/actions/transactions";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest) {
       filters.offset = parseInt(searchParams.get("offset")!, 10);
 
     const data = await getTransactions(
-      filters as Parameters<typeof getTransactions>[0]
+      filters as Parameters<typeof getTransactions>[0],
+      user.id
     );
     return Response.json(data);
   } catch (error) {
@@ -43,11 +45,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
-    const result = await createTransaction(body);
+    const result = await createTransaction(body, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

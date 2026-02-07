@@ -7,6 +7,7 @@ export type Necessity = "necessary" | "unnecessary" | "debatable";
 
 export interface Category {
   id: string;
+  user_id: string;
   name: string;
   icon: string;
   color: string;
@@ -18,6 +19,7 @@ export interface Category {
 
 export interface Subcategory {
   id: string;
+  user_id: string;
   category_id: string;
   name: string;
   sort_order: number;
@@ -26,6 +28,7 @@ export interface Subcategory {
 
 export interface Transaction {
   id: string;
+  user_id: string;
   type: TransactionType;
   amount: number;
   category_id: string;
@@ -41,6 +44,7 @@ export interface Transaction {
 
 export interface Event {
   id: string;
+  user_id: string;
   name: string;
   description: string | null;
   start_date: string;
@@ -49,19 +53,28 @@ export interface Event {
 }
 
 export interface Setting {
+  id: string;
+  user_id: string;
   key: string;
   value: unknown;
   updated_at: string;
 }
 
-export interface MonthlySummary {
+export interface Profile {
   id: string;
-  month: string;
-  total_income: number;
-  total_expense: number;
-  necessary_expense: number;
-  unnecessary_expense: number;
-  debatable_expense: number;
+  display_name: string | null;
+  avatar_url: string | null;
+  currency_code: string;
+  currency_symbol: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserStreak {
+  user_id: string;
+  current_streak: number;
+  longest_streak: number;
+  last_transaction_date: string | null;
   updated_at: string;
 }
 

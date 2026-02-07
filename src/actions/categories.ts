@@ -1,19 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type { Category, CategoryWithSubs, Subcategory } from "@/types";
 
-export async function getCategories(options?: {
-  include_subcategories?: boolean;
-  type?: "expense" | "income";
-}): Promise<CategoryWithSubs[]> {
+export async function getCategories(
+  options?: {
+    include_subcategories?: boolean;
+    type?: "expense" | "income";
+  },
+  userId?: string
+): Promise<CategoryWithSubs[]> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const includeSubs = options?.include_subcategories !== false;
 
   let query = supabase
     .from("categories")
     .select(includeSubs ? "*, subcategories(*)" : "*")
+    .eq("user_id", uid)
     .order("sort_order", { ascending: true });
 
   if (options?.type === "income") {
@@ -39,18 +44,23 @@ export async function getCategories(options?: {
   return (data as unknown as CategoryWithSubs[]) ?? [];
 }
 
-export async function createCategory(input: {
-  name: string;
-  icon?: string;
-  color?: string;
-  is_essential?: boolean;
-  is_income?: boolean;
-}): Promise<{ data: Category | null; error: string | null }> {
+export async function createCategory(
+  input: {
+    name: string;
+    icon?: string;
+    color?: string;
+    is_essential?: boolean;
+    is_income?: boolean;
+  },
+  userId?: string
+): Promise<{ data: Category | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("categories")
     .insert({
+      user_id: uid,
       name: input.name,
       icon: input.icon ?? "📦",
       color: input.color ?? "#6B7280",
@@ -80,14 +90,17 @@ export async function updateCategory(
     color: string;
     is_essential: boolean;
     sort_order: number;
-  }>
+  }>,
+  userId?: string
 ): Promise<{ data: Category | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("categories")
     .update(input)
     .eq("id", id)
+    .eq("user_id", uid)
     .select()
     .single();
 
@@ -100,13 +113,15 @@ export async function updateCategory(
   return { data: data as Category, error: null };
 }
 
-export async function deleteCategory(id: string): Promise<{ error: string | null }> {
+export async function deleteCategory(id: string, userId?: string): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { error } = await supabase
     .from("categories")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", uid);
 
   if (error) {
     console.error("deleteCategory error:", error.message);
@@ -120,15 +135,20 @@ export async function deleteCategory(id: string): Promise<{ error: string | null
   return { error: null };
 }
 
-export async function createSubcategory(input: {
-  category_id: string;
-  name: string;
-}): Promise<{ data: Subcategory | null; error: string | null }> {
+export async function createSubcategory(
+  input: {
+    category_id: string;
+    name: string;
+  },
+  userId?: string
+): Promise<{ data: Subcategory | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("subcategories")
     .insert({
+      user_id: uid,
       category_id: input.category_id,
       name: input.name,
     })
@@ -149,14 +169,17 @@ export async function createSubcategory(input: {
 
 export async function updateSubcategory(
   id: string,
-  input: Partial<{ name: string; sort_order: number }>
+  input: Partial<{ name: string; sort_order: number }>,
+  userId?: string
 ): Promise<{ data: Subcategory | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("subcategories")
     .update(input)
     .eq("id", id)
+    .eq("user_id", uid)
     .select()
     .single();
 
@@ -169,13 +192,15 @@ export async function updateSubcategory(
   return { data: data as Subcategory, error: null };
 }
 
-export async function deleteSubcategory(id: string): Promise<{ error: string | null }> {
+export async function deleteSubcategory(id: string, userId?: string): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { error } = await supabase
     .from("subcategories")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", uid);
 
   if (error) {
     console.error("deleteSubcategory error:", error.message);

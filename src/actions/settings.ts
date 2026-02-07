@@ -1,14 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 
-export async function getSetting(key: string): Promise<unknown> {
+export async function getSetting(key: string, userId?: string): Promise<unknown> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("settings")
     .select("value")
+    .eq("user_id", uid)
     .eq("key", key)
     .single();
 
@@ -20,12 +22,14 @@ export async function getSetting(key: string): Promise<unknown> {
   return data?.value ?? null;
 }
 
-export async function getAllSettings(): Promise<Record<string, unknown>> {
+export async function getAllSettings(userId?: string): Promise<Record<string, unknown>> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("settings")
-    .select("key, value");
+    .select("key, value")
+    .eq("user_id", uid);
 
   if (error) {
     console.error("getAllSettings error:", error.message);
@@ -41,13 +45,15 @@ export async function getAllSettings(): Promise<Record<string, unknown>> {
 
 export async function updateSetting(
   key: string,
-  value: unknown
+  value: unknown,
+  userId?: string
 ): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { error } = await supabase
     .from("settings")
-    .upsert({ key, value }, { onConflict: "key" });
+    .upsert({ user_id: uid, key, value }, { onConflict: "user_id,key" });
 
   if (error) {
     console.error("updateSetting error:", error.message);
@@ -60,14 +66,16 @@ export async function updateSetting(
 
 export async function toggleBudgetMode(
   active: boolean,
-  daily_limit?: number
+  daily_limit?: number,
+  userId?: string
 ): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
-  // Read current budget_mode setting
   const { data: current } = await supabase
     .from("settings")
     .select("value")
+    .eq("user_id", uid)
     .eq("key", "budget_mode")
     .single();
 
@@ -86,7 +94,7 @@ export async function toggleBudgetMode(
 
   const { error } = await supabase
     .from("settings")
-    .upsert({ key: "budget_mode", value: newValue }, { onConflict: "key" });
+    .upsert({ user_id: uid, key: "budget_mode", value: newValue }, { onConflict: "user_id,key" });
 
   if (error) {
     console.error("toggleBudgetMode error:", error.message);

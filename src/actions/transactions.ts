@@ -1,31 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type { Transaction, TransactionWithDetails } from "@/types";
 
-export async function getTransactions(filters?: {
-  type?: "expense" | "income";
-  category_id?: string;
-  subcategory_id?: string;
-  necessity?: "necessary" | "unnecessary" | "debatable";
-  event_id?: string;
-  date_from?: string;
-  date_to?: string;
-  search?: string;
-  limit?: number;
-  offset?: number;
-}): Promise<{
+export async function getTransactions(
+  filters?: {
+    type?: "expense" | "income";
+    category_id?: string;
+    subcategory_id?: string;
+    necessity?: "necessary" | "unnecessary" | "debatable";
+    event_id?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  },
+  userId?: string
+): Promise<{
   data: TransactionWithDetails[];
   count: number;
 }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const limit = filters?.limit ?? 50;
   const offset = filters?.offset ?? 0;
 
   let query = supabase
     .from("transactions")
     .select("*, categories(id, name, icon, color, is_essential, is_income), subcategories(id, name), events(id, name)", { count: "exact" })
+    .eq("user_id", uid)
     .order("transaction_date", { ascending: false })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
@@ -75,13 +80,15 @@ export async function getTransactions(filters?: {
   return { data: enriched, count: count ?? 0 };
 }
 
-export async function getTransaction(id: string): Promise<Transaction | null> {
+export async function getTransaction(id: string, userId?: string): Promise<Transaction | null> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
     .eq("id", id)
+    .eq("user_id", uid)
     .single();
 
   if (error) {
@@ -92,22 +99,27 @@ export async function getTransaction(id: string): Promise<Transaction | null> {
   return data as Transaction;
 }
 
-export async function createTransaction(input: {
-  type: "expense" | "income";
-  amount: number;
-  category_id: string;
-  subcategory_id?: string;
-  necessity?: "necessary" | "unnecessary" | "debatable";
-  note?: string;
-  transaction_date?: string;
-  event_id?: string;
-}): Promise<{ data: Transaction | null; error: string | null }> {
+export async function createTransaction(
+  input: {
+    type: "expense" | "income";
+    amount: number;
+    category_id: string;
+    subcategory_id?: string;
+    necessity?: "necessary" | "unnecessary" | "debatable";
+    note?: string;
+    transaction_date?: string;
+    event_id?: string;
+  },
+  userId?: string
+): Promise<{ data: Transaction | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   // Read budget_mode setting to auto-stamp is_budget_mode
   const { data: budgetSetting } = await supabase
     .from("settings")
     .select("value")
+    .eq("user_id", uid)
     .eq("key", "budget_mode")
     .single();
 
@@ -116,6 +128,7 @@ export async function createTransaction(input: {
   const { data, error } = await supabase
     .from("transactions")
     .insert({
+      user_id: uid,
       type: input.type,
       amount: input.amount,
       category_id: input.category_id,
@@ -148,14 +161,17 @@ export async function updateTransaction(
     note: string;
     transaction_date: string;
     event_id: string | null;
-  }>
+  }>,
+  userId?: string
 ): Promise<{ data: Transaction | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("transactions")
     .update(input)
     .eq("id", id)
+    .eq("user_id", uid)
     .select()
     .single();
 
@@ -168,13 +184,15 @@ export async function updateTransaction(
   return { data: data as Transaction, error: null };
 }
 
-export async function deleteTransaction(id: string): Promise<{ error: string | null }> {
+export async function deleteTransaction(id: string, userId?: string): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { error } = await supabase
     .from("transactions")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", uid);
 
   if (error) {
     console.error("deleteTransaction error:", error.message);

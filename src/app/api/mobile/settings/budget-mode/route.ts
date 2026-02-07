@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { toggleBudgetMode } from "@/actions/settings";
 
 export async function POST(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await toggleBudgetMode(active, daily_limit);
+    const result = await toggleBudgetMode(active, daily_limit, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

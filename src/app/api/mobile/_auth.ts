@@ -1,40 +1,37 @@
 import { NextRequest } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export async function validateMobileAuth(
+/**
+ * Validate Supabase JWT from mobile app and return the authenticated user.
+ * Mobile sends: Authorization: Bearer <supabase-jwt>
+ */
+export async function getAuthUser(
   request: NextRequest
-): Promise<boolean> {
+): Promise<{ id: string; email: string } | null> {
   const authHeader = request.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) return false;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+
   const token = authHeader.slice(7);
 
-  // Same HMAC verification as middleware.ts
-  const parts = token.split(".");
-  if (parts.length !== 3) return false;
-  const [random, expiryStr, hmac] = parts;
-  const payload = `${random}.${expiryStr}`;
-
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!secret) return false;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
+  // Create a Supabase client with the user's JWT to verify it
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    }
   );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
-  const expected = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 
-  if (hmac !== expected) return false;
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
 
-  const expiry = parseInt(expiryStr, 10);
-  if (isNaN(expiry) || Date.now() > expiry) return false;
+  if (error || !user) return null;
 
-  return true;
+  return { id: user.id, email: user.email ?? "" };
 }
 
 export function unauthorized() {

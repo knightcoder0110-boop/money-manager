@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import { getDailySpending } from "@/actions/dashboard";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { searchParams } = new URL(request.url);
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const data = await getDailySpending({ year, month });
+    const data = await getDailySpending({ year, month }, user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile daily spending error:", error);

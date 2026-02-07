@@ -3,19 +3,19 @@ import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/layout/page-header";
 import GeneralSettings from "@/components/settings/general-settings";
 import BudgetModeSettings from "@/components/settings/budget-mode-settings";
-import AppLockSettings from "@/components/settings/app-lock-settings";
+import SignOutButton from "@/components/settings/sign-out-button";
 import { getAllSettings } from "@/actions/settings";
-import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Grid3X3, ChevronRight } from "lucide-react";
 
 export default async function SettingsPage() {
+  const user = await getCurrentUser();
   const settings = await getAllSettings();
 
   const currency = (settings.currency as { code?: string; symbol?: string }) || {};
   const budgetMode = (settings.budget_mode as { active?: boolean; daily_limit?: number }) || {};
   const initialBalance = (settings.initial_balance as number) || 0;
-  const appLock = (settings.app_lock as { enabled?: boolean; password_hash?: string }) || {};
 
   return (
     <AppShell>
@@ -31,8 +31,6 @@ export default async function SettingsPage() {
           active={budgetMode.active || false}
           dailyLimit={budgetMode.daily_limit || 0}
         />
-
-        <AppLockSettings hasPassword={!!appLock.enabled} />
 
         {/* Categories Link */}
         <Link href="/categories">
@@ -53,6 +51,8 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
         </Link>
+
+        <SignOutButton email={user.email ?? ""} />
       </div>
     </AppShell>
   );

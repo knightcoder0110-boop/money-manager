@@ -8,27 +8,27 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: attach auth token and base URL
+// Request interceptor: attach Supabase JWT and base URL
 api.interceptors.request.use((config) => {
-  const { token, serverUrl } = useAuthStore.getState();
+  const { session, serverUrl } = useAuthStore.getState();
 
   if (serverUrl) {
     config.baseURL = `${serverUrl}/api/mobile`;
   }
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
 
   return config;
 });
 
-// Response interceptor: handle 401
+// Response interceptor: handle 401 by signing out
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().lock();
+      useAuthStore.getState().signOut();
     }
     return Promise.reject(error);
   }

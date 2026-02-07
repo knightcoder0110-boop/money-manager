@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/lock", "/api/auth/verify", "/api/auth/grant", "/api/mobile/"];
+const PUBLIC_PATHS = ["/login", "/signup", "/auth/callback", "/api/mobile/"];
 
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return true;
@@ -11,37 +12,6 @@ function isPublic(pathname: string): boolean {
   return false;
 }
 
-async function verifyToken(token: string): Promise<boolean> {
-  const parts = token.split(".");
-  if (parts.length !== 3) return false;
-
-  const [random, expiryStr, hmac] = parts;
-  const payload = `${random}.${expiryStr}`;
-
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!secret) return false;
-
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
-  const expected = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  if (hmac !== expected) return false;
-
-  const expiry = parseInt(expiryStr, 10);
-  if (isNaN(expiry) || Date.now() > expiry) return false;
-
-  return true;
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -49,15 +19,43 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("app_session")?.value;
-  if (token && (await verifyToken(token))) {
-    return NextResponse.next();
+  // Create a Supabase client that reads/writes cookies on the request/response
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Refresh the session — this also validates it
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
   }
 
-  const url = request.nextUrl.clone();
-  url.pathname = "/lock";
-  url.searchParams.set("from", pathname);
-  return NextResponse.redirect(url);
+  return supabaseResponse;
 }
 
 export const config = {

@@ -1,20 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type { Event, Transaction } from "@/types";
 
-export async function getEvents(options?: {
-  limit?: number;
-  offset?: number;
-}): Promise<{ data: Event[]; count: number }> {
+export async function getEvents(
+  options?: { limit?: number; offset?: number },
+  userId?: string
+): Promise<{ data: Event[]; count: number }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
 
   const { data, count, error } = await supabase
     .from("events")
     .select("*", { count: "exact" })
+    .eq("user_id", uid)
     .order("start_date", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -26,17 +28,19 @@ export async function getEvents(options?: {
   return { data: (data as Event[]) ?? [], count: count ?? 0 };
 }
 
-export async function getEventsWithTotals(options?: {
-  limit?: number;
-  offset?: number;
-}): Promise<{ data: (Event & { total_cost: number })[]; count: number }> {
+export async function getEventsWithTotals(
+  options?: { limit?: number; offset?: number },
+  userId?: string
+): Promise<{ data: (Event & { total_cost: number })[]; count: number }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
 
   const { data: events, count, error } = await supabase
     .from("events")
     .select("*", { count: "exact" })
+    .eq("user_id", uid)
     .order("start_date", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -51,10 +55,10 @@ export async function getEventsWithTotals(options?: {
     return { data: [], count: count ?? 0 };
   }
 
-  // Fetch expense totals per event in one query
   const { data: transactions } = await supabase
     .from("transactions")
     .select("event_id, amount, type")
+    .eq("user_id", uid)
     .in("event_id", eventIds)
     .eq("type", "expense");
 
@@ -72,19 +76,23 @@ export async function getEventsWithTotals(options?: {
   return { data: result, count: count ?? 0 };
 }
 
-export async function getEventWithTransactions(id: string): Promise<{
+export async function getEventWithTransactions(
+  id: string,
+  userId?: string
+): Promise<{
   event: Event | null;
   transactions: Transaction[];
   total: number;
   breakdown: { category_name: string; amount: number }[];
 } | null> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
-  // Fetch event
   const { data: event, error: eventError } = await supabase
     .from("events")
     .select("*")
     .eq("id", id)
+    .eq("user_id", uid)
     .single();
 
   if (eventError || !event) {
@@ -92,10 +100,10 @@ export async function getEventWithTransactions(id: string): Promise<{
     return null;
   }
 
-  // Fetch transactions for this event
   const { data: transactions, error: txError } = await supabase
     .from("transactions")
     .select("*")
+    .eq("user_id", uid)
     .eq("event_id", id)
     .order("transaction_date", { ascending: false });
 
@@ -106,21 +114,19 @@ export async function getEventWithTransactions(id: string): Promise<{
 
   const txList = (transactions as Transaction[]) ?? [];
 
-  // Calculate total expense
   const total = txList
     .filter((t) => t.type === "expense")
     .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  // Build category breakdown
   const categoryMap = new Map<string, { category_name: string; amount: number }>();
 
-  // We need category names, so fetch categories for the transactions
   const categoryIds = [...new Set(txList.filter((t) => t.type === "expense").map((t) => t.category_id))];
 
   if (categoryIds.length > 0) {
     const { data: categories } = await supabase
       .from("categories")
       .select("id, name")
+      .eq("user_id", uid)
       .in("id", categoryIds);
 
     const catNameMap = new Map<string, string>();
@@ -150,17 +156,22 @@ export async function getEventWithTransactions(id: string): Promise<{
   };
 }
 
-export async function createEvent(input: {
-  name: string;
-  description?: string;
-  start_date: string;
-  end_date: string;
-}): Promise<{ data: Event | null; error: string | null }> {
+export async function createEvent(
+  input: {
+    name: string;
+    description?: string;
+    start_date: string;
+    end_date: string;
+  },
+  userId?: string
+): Promise<{ data: Event | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("events")
     .insert({
+      user_id: uid,
       name: input.name,
       description: input.description ?? null,
       start_date: input.start_date,
@@ -185,14 +196,17 @@ export async function updateEvent(
     description: string;
     start_date: string;
     end_date: string;
-  }>
+  }>,
+  userId?: string
 ): Promise<{ data: Event | null; error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const { data, error } = await supabase
     .from("events")
     .update(input)
     .eq("id", id)
+    .eq("user_id", uid)
     .select()
     .single();
 
@@ -205,14 +219,15 @@ export async function updateEvent(
   return { data: data as Event, error: null };
 }
 
-export async function deleteEvent(id: string): Promise<{ error: string | null }> {
+export async function deleteEvent(id: string, userId?: string): Promise<{ error: string | null }> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
-  // ON DELETE SET NULL on transactions.event_id handles unlinking
   const { error } = await supabase
     .from("events")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", uid);
 
   if (error) {
     console.error("deleteEvent error:", error.message);

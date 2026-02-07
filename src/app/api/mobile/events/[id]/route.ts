@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../../_auth";
+import { getAuthUser, unauthorized } from "../../_auth";
 import {
   getEventWithTransactions,
   updateEvent,
@@ -10,11 +10,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { id } = await params;
-    const data = await getEventWithTransactions(id);
+    const data = await getEventWithTransactions(id, user.id);
 
     if (!data) {
       return Response.json(
@@ -42,12 +43,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { id } = await params;
     const body = await request.json();
-    const result = await updateEvent(id, body);
+    const result = await updateEvent(id, body, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });
@@ -67,11 +69,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const { id } = await params;
-    const result = await deleteEvent(id);
+    const result = await deleteEvent(id, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });

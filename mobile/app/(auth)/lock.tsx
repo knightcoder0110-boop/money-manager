@@ -1,142 +1,98 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
+  TextInput,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSequence,
-  withTiming,
-  withSpring,
-  FadeIn,
-  FadeInUp,
-} from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text, Button, Input } from '../../src/components/ui';
-import { useThemeColors } from '../../src/theme';
+import { Text, Button } from '../../src/components/ui';
+import { useThemeColors, spacing } from '../../src/theme';
 import { haptics } from '../../src/utils/haptics';
+import { supabase } from '../../src/lib/supabase';
 import { useAuthStore } from '../../src/store/auth';
-import { verifyPassword, getAuthStatus } from '../../src/api/auth';
 
-const PIN_LENGTH = 6;
+type Screen = 'setup' | 'login' | 'signup';
 
-type Screen = 'setup' | 'pin';
-
-function PinDot({ dotScale, borderColor, accentColor }: { dotScale: Animated.SharedValue<number>; borderColor: string; accentColor: string }) {
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: dotScale.value }],
-    backgroundColor: dotScale.value > 0.5 ? accentColor : 'transparent',
-  }));
-
-  return (
-    <View style={[styles.dotOuter, { borderColor }]}>
-      <Animated.View style={[styles.dotInner, { backgroundColor: accentColor }, animStyle]} />
-    </View>
-  );
-}
-
-export default function LockScreen() {
+export default function AuthScreen() {
   const colors = useThemeColors();
-  const { serverUrl, setServerUrl, unlock, setHasPassword } = useAuthStore();
+  const { serverUrl, setServerUrl } = useAuthStore();
 
-  const [screen, setScreen] = useState<Screen>(serverUrl ? 'pin' : 'setup');
+  const [screen, setScreen] = useState<Screen>(serverUrl ? 'login' : 'setup');
   const [urlInput, setUrlInput] = useState(serverUrl);
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-
-  const shakeX = useSharedValue(0);
-  const dot0 = useSharedValue(0);
-  const dot1 = useSharedValue(0);
-  const dot2 = useSharedValue(0);
-  const dot3 = useSharedValue(0);
-  const dot4 = useSharedValue(0);
-  const dot5 = useSharedValue(0);
-  const dotScales = [dot0, dot1, dot2, dot3, dot4, dot5];
-
-  const shakeStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: shakeX.value }],
-  }));
-
-  const triggerShake = () => {
-    shakeX.value = withSequence(
-      withTiming(-12, { duration: 50 }),
-      withTiming(12, { duration: 50 }),
-      withTiming(-8, { duration: 50 }),
-      withTiming(8, { duration: 50 }),
-      withTiming(-4, { duration: 50 }),
-      withTiming(0, { duration: 50 })
-    );
-  };
 
   const handleConnect = async () => {
     if (!urlInput?.trim()) return;
-    setConnecting(true);
+    setLoading(true);
     setError('');
     try {
       await setServerUrl(urlInput.trim());
-      const status = await getAuthStatus();
-      setHasPassword(status.has_password);
-      if (status.has_password) {
-        setScreen('pin');
-      } else {
-        await unlock('no-auth');
-      }
+      setScreen('login');
     } catch {
-      setError('Could not connect. Check the URL and try again.');
+      setError('Could not save URL. Try again.');
     } finally {
-      setConnecting(false);
+      setLoading(false);
     }
   };
 
-  const handlePinPress = useCallback(
-    async (digit: string) => {
-      if (pin.length >= PIN_LENGTH) return;
-      haptics.light();
+  const handleLogin = async () => {
+    if (!email.trim() || !password) return;
+    setLoading(true);
+    setError('');
 
-      const newPin = pin + digit;
-      setPin(newPin);
-      setError('');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
-      const idx = newPin.length - 1;
-      if (idx < dotScales.length) {
-        dotScales[idx].value = withSpring(1, { damping: 12, stiffness: 300 });
-      }
+    if (error) {
+      setError(error.message);
+      haptics.error();
+    } else {
+      haptics.success();
+    }
+    setLoading(false);
+  };
 
-      if (newPin.length === PIN_LENGTH) {
-        setLoading(true);
-        try {
-          const result = await verifyPassword(newPin);
-          haptics.success();
-          await unlock(result.token);
-        } catch {
-          haptics.error();
-          triggerShake();
-          setError('Wrong PIN. Try again.');
-          dotScales.forEach((s) => {
-            s.value = withTiming(0, { duration: 200 });
-          });
-          setTimeout(() => setPin(''), 300);
-        } finally {
-          setLoading(false);
-        }
-      }
-    },
-    [pin, dotScales]
-  );
+  const handleSignup = async () => {
+    if (!email.trim() || !password) return;
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+    setLoading(true);
+    setError('');
 
-  const handleBackspace = useCallback(() => {
-    if (pin.length === 0) return;
-    haptics.light();
-    const idx = pin.length - 1;
-    dotScales[idx].value = withTiming(0, { duration: 150 });
-    setPin((p) => p.slice(0, -1));
-  }, [pin, dotScales]);
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: {
+          display_name: displayName || email.split('@')[0],
+        },
+      },
+    });
 
+    if (error) {
+      setError(error.message);
+      haptics.error();
+    } else {
+      haptics.success();
+    }
+    setLoading(false);
+  };
+
+  // Server URL setup screen
   if (screen === 'setup') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -158,20 +114,26 @@ export default function LockScreen() {
           </View>
 
           <View style={styles.form}>
-            <Input
-              label="Server URL"
-              placeholder="https://your-server.com"
-              value={urlInput}
-              onChangeText={setUrlInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              error={error}
-            />
+            <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
+              <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Server URL</Text>
+              <TextInput
+                placeholder="https://your-server.com"
+                placeholderTextColor={colors.textTertiary}
+                value={urlInput}
+                onChangeText={setUrlInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                style={[styles.textInput, { color: colors.textPrimary }]}
+              />
+            </View>
+            {error ? (
+              <Text variant="bodySm" color={colors.danger}>{error}</Text>
+            ) : null}
             <Button
-              title={connecting ? 'Connecting...' : 'Connect'}
+              title={loading ? 'Connecting...' : 'Connect'}
               onPress={handleConnect}
-              loading={connecting}
+              loading={loading}
               fullWidth
               size="lg"
             />
@@ -181,12 +143,8 @@ export default function LockScreen() {
     );
   }
 
-  const numpadKeys = [
-    ['1', '2', '3'],
-    ['4', '5', '6'],
-    ['7', '8', '9'],
-    ['', '0', 'back'],
-  ];
+  // Login / Signup screen
+  const isSignup = screen === 'signup';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -196,93 +154,137 @@ export default function LockScreen() {
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
       />
-
-      <Animated.View entering={FadeIn.delay(200)} style={styles.pinContent}>
-        <View style={styles.pinHeader}>
-          <Text variant="displaySmall" align="center">🔒</Text>
-          <Text variant="h2" align="center" style={{ marginTop: 12 }}>
-            Enter your PIN
-          </Text>
-        </View>
-
-        <Animated.View style={[styles.dotsContainer, shakeStyle]}>
-          {dotScales.map((dotScale, i) => (
-            <PinDot key={i} dotScale={dotScale} borderColor={colors.border} accentColor={colors.accent} />
-          ))}
-        </Animated.View>
-
-        {error ? (
-          <Animated.View entering={FadeIn}>
-            <Text variant="bodySm" color={colors.danger} align="center">{error}</Text>
-          </Animated.View>
-        ) : (
-          <View style={{ height: 20 }} />
-        )}
-
-        <View style={styles.numpad}>
-          {numpadKeys.map((row, ri) => (
-            <View key={ri} style={styles.numpadRow}>
-              {row.map((key, ki) => {
-                if (key === '') return <View key={ki} style={styles.numpadKey} />;
-                if (key === 'back') {
-                  return (
-                    <Pressable
-                      key={ki}
-                      style={({ pressed }) => [
-                        styles.numpadKey,
-                        pressed && { backgroundColor: colors.surfacePressed },
-                      ]}
-                      onPress={handleBackspace}
-                      onLongPress={() => {
-                        haptics.medium();
-                        dotScales.forEach((s) => { s.value = withTiming(0, { duration: 150 }); });
-                        setPin('');
-                      }}
-                    >
-                      <Text variant="h2" color={colors.textSecondary}>⌫</Text>
-                    </Pressable>
-                  );
-                }
-                return (
-                  <Pressable
-                    key={ki}
-                    style={({ pressed }) => [
-                      styles.numpadKey,
-                      pressed && { backgroundColor: colors.surfacePressed, transform: [{ scale: 0.95 }] },
-                    ]}
-                    onPress={() => handlePinPress(key)}
-                    disabled={loading}
-                  >
-                    <Text variant="displaySmall" color={colors.textPrimary}>{key}</Text>
-                  </Pressable>
-                );
-              })}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInUp.springify()} style={styles.authContent}>
+            <View style={styles.logoContainer}>
+              <Text variant="displaySmall" align="center">💰</Text>
+              <Text variant="h1" align="center" style={{ marginTop: 12 }}>
+                {isSignup ? 'Create Account' : 'Welcome Back'}
+              </Text>
+              <Text variant="body" color={colors.textSecondary} align="center" style={{ marginTop: 8 }}>
+                {isSignup ? 'Sign up to start tracking' : 'Sign in to your account'}
+              </Text>
             </View>
-          ))}
-        </View>
-      </Animated.View>
+
+            <View style={styles.form}>
+              {isSignup && (
+                <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
+                  <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Display Name</Text>
+                  <TextInput
+                    placeholder="Your name"
+                    placeholderTextColor={colors.textTertiary}
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    autoCapitalize="words"
+                    style={[styles.textInput, { color: colors.textPrimary }]}
+                  />
+                </View>
+              )}
+
+              <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
+                <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Email</Text>
+                <TextInput
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.textTertiary}
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                />
+              </View>
+
+              <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
+                <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Password</Text>
+                <TextInput
+                  placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
+                  placeholderTextColor={colors.textTertiary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  style={[styles.textInput, { color: colors.textPrimary }]}
+                />
+              </View>
+
+              {error ? (
+                <Text variant="bodySm" color={colors.danger}>{error}</Text>
+              ) : null}
+
+              <Button
+                title={loading ? (isSignup ? 'Creating account...' : 'Signing in...') : (isSignup ? 'Create Account' : 'Sign In')}
+                onPress={isSignup ? handleSignup : handleLogin}
+                loading={loading}
+                fullWidth
+                size="lg"
+              />
+
+              <Pressable
+                onPress={() => {
+                  haptics.selection();
+                  setError('');
+                  setScreen(isSignup ? 'login' : 'signup');
+                }}
+                style={styles.switchButton}
+              >
+                <Text variant="body" color={colors.textSecondary} align="center">
+                  {isSignup ? 'Already have an account? ' : "Don't have an account? "}
+                  <Text variant="bodyMedium" color={colors.accent}>
+                    {isSignup ? 'Sign In' : 'Sign Up'}
+                  </Text>
+                </Text>
+              </Pressable>
+
+              {/* Server URL change option */}
+              <Pressable
+                onPress={() => {
+                  haptics.selection();
+                  setError('');
+                  setScreen('setup');
+                }}
+                style={styles.switchButton}
+              >
+                <Text variant="bodySm" color={colors.textTertiary} align="center">
+                  Change server URL
+                </Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  flex: { flex: 1 },
   gradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
   setupContent: { flex: 1, justifyContent: 'center', paddingHorizontal: 32, gap: 48 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center' },
+  authContent: { paddingHorizontal: 32, gap: 48 },
   logoContainer: { alignItems: 'center' },
-  form: { gap: 16 },
-  pinContent: { flex: 1, paddingTop: 60, alignItems: 'center' },
-  pinHeader: { alignItems: 'center', marginBottom: 32 },
-  dotsContainer: { flexDirection: 'row', gap: 16, marginBottom: 24 },
-  dotOuter: {
-    width: 16, height: 16, borderRadius: 8, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  form: { gap: 12 },
+  inputRow: {
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  dotInner: { width: 16, height: 16, borderRadius: 8 },
-  numpad: { marginTop: 32, gap: 12 },
-  numpadRow: { flexDirection: 'row', gap: 24 },
-  numpadKey: {
-    width: 72, height: 72, borderRadius: 36,
-    alignItems: 'center', justifyContent: 'center',
+  textInput: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    height: 28,
+    padding: 0,
+  },
+  switchButton: {
+    paddingVertical: 8,
   },
 });

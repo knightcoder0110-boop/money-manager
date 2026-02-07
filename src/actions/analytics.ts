@@ -1,13 +1,13 @@
 "use server";
 
-import { createServerClient } from "@/lib/supabase/server";
+import { createServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type { MonthlyTrend, CategoryAnalytics, TopCategory } from "@/types";
 
-export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]> {
+export async function getMonthlyTrends(months?: number, userId?: string): Promise<MonthlyTrend[]> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const numMonths = months ?? 6;
 
-  // Calculate start date: N months ago, first day of that month
   const now = new Date();
   const startDate = new Date(now.getFullYear(), now.getMonth() - numMonths + 1, 1);
   const startStr = startDate.toISOString().split("T")[0];
@@ -15,6 +15,7 @@ export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]>
   const { data, error } = await supabase
     .from("transactions")
     .select("type, amount, necessity, transaction_date")
+    .eq("user_id", uid)
     .gte("transaction_date", startStr)
     .order("transaction_date", { ascending: true });
 
@@ -23,10 +24,8 @@ export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]>
     return [];
   }
 
-  // Aggregate by month
   const monthlyMap = new Map<string, MonthlyTrend>();
 
-  // Initialize all months
   for (let i = 0; i < numMonths; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - numMonths + 1 + i, 1);
     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -41,7 +40,7 @@ export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]>
   }
 
   for (const tx of data ?? []) {
-    const monthKey = tx.transaction_date.substring(0, 7); // "YYYY-MM"
+    const monthKey = tx.transaction_date.substring(0, 7);
     const entry = monthlyMap.get(monthKey);
     if (!entry) continue;
     const amt = Number(tx.amount);
@@ -55,7 +54,6 @@ export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]>
     }
   }
 
-  // Calculate savings
   for (const entry of monthlyMap.values()) {
     entry.savings = entry.income - entry.expense;
   }
@@ -63,12 +61,16 @@ export async function getMonthlyTrends(months?: number): Promise<MonthlyTrend[]>
   return Array.from(monthlyMap.values());
 }
 
-export async function getCategoryBreakdown(params: {
-  year: number;
-  month: number;
-  category_id?: string;
-}): Promise<CategoryAnalytics[]> {
+export async function getCategoryBreakdown(
+  params: {
+    year: number;
+    month: number;
+    category_id?: string;
+  },
+  userId?: string
+): Promise<CategoryAnalytics[]> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
 
   const monthStr = String(params.month).padStart(2, "0");
   const startDate = `${params.year}-${monthStr}-01`;
@@ -76,10 +78,10 @@ export async function getCategoryBreakdown(params: {
   const endDate = `${params.year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
 
   if (params.category_id) {
-    // Subcategory breakdown for a specific category
     const { data, error } = await supabase
       .from("transactions")
       .select("amount, necessity, subcategory_id, subcategories(id, name)")
+      .eq("user_id", uid)
       .eq("type", "expense")
       .eq("category_id", params.category_id)
       .gte("transaction_date", startDate)
@@ -90,11 +92,11 @@ export async function getCategoryBreakdown(params: {
       return [];
     }
 
-    // Get the parent category info
     const { data: catData } = await supabase
       .from("categories")
       .select("icon, color")
       .eq("id", params.category_id)
+      .eq("user_id", uid)
       .single();
 
     const subMap = new Map<string, CategoryAnalytics>();
@@ -130,10 +132,10 @@ export async function getCategoryBreakdown(params: {
     return Array.from(subMap.values()).sort((a, b) => b.total - a.total);
   }
 
-  // Category-level breakdown
   const { data, error } = await supabase
     .from("transactions")
     .select("amount, necessity, category_id, categories(id, name, icon, color)")
+    .eq("user_id", uid)
     .eq("type", "expense")
     .gte("transaction_date", startDate)
     .lte("transaction_date", endDate);
@@ -175,17 +177,22 @@ export async function getCategoryBreakdown(params: {
   return Array.from(catMap.values()).sort((a, b) => b.total - a.total);
 }
 
-export async function getTopCategories(params?: {
-  date_from?: string;
-  date_to?: string;
-  limit?: number;
-}): Promise<TopCategory[]> {
+export async function getTopCategories(
+  params?: {
+    date_from?: string;
+    date_to?: string;
+    limit?: number;
+  },
+  userId?: string
+): Promise<TopCategory[]> {
   const supabase = createServerClient();
+  const uid = userId ?? (await getCurrentUser()).id;
   const resultLimit = params?.limit ?? 5;
 
   let query = supabase
     .from("transactions")
     .select("amount, category_id, categories(name, icon)")
+    .eq("user_id", uid)
     .eq("type", "expense");
 
   if (params?.date_from) {

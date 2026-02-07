@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
-import { validateMobileAuth, unauthorized } from "../_auth";
+import { getAuthUser, unauthorized } from "../_auth";
 import { getAllSettings, updateSetting } from "@/actions/settings";
 
 export async function GET(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
-    const data = await getAllSettings();
+    const data = await getAllSettings(user.id);
     return Response.json(data);
   } catch (error) {
     console.error("Mobile get settings error:", error);
@@ -18,7 +19,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  if (!(await validateMobileAuth(request))) return unauthorized();
+  const user = await getAuthUser(request);
+  if (!user) return unauthorized();
 
   try {
     const body = await request.json();
@@ -31,7 +33,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const result = await updateSetting(key, value);
+    const result = await updateSetting(key, value, user.id);
 
     if (result.error) {
       return Response.json({ error: result.error }, { status: 400 });
