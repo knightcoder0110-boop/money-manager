@@ -7,11 +7,13 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "pnpm": "9.13.2"
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "pnpm": "9.13.2",
       "android": {
         "buildType": "apk"
       },
@@ -21,6 +23,7 @@
     },
     "production": {
       "channel": "production",
+      "pnpm": "9.13.2",
       "android": {
         "buildType": "app-bundle"
       },
