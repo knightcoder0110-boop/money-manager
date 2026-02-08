@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +29,7 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -205,14 +207,27 @@ export default function AuthScreen() {
 
               <View style={[styles.inputRow, { backgroundColor: colors.surface }]}>
                 <Text variant="bodySm" color={colors.textTertiary} style={{ marginBottom: 4 }}>Password</Text>
-                <TextInput
-                  placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
-                  placeholderTextColor={colors.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  style={[styles.textInput, { color: colors.textPrimary }]}
-                />
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    placeholder={isSignup ? 'At least 6 characters' : 'Your password'}
+                    placeholderTextColor={colors.textTertiary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    style={[styles.textInput, styles.passwordInput, { color: colors.textPrimary }]}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={8}
+                    style={styles.eyeButton}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color={colors.textTertiary} />
+                    ) : (
+                      <Eye size={20} color={colors.textTertiary} />
+                    )}
+                  </Pressable>
+                </View>
               </View>
 
               {error ? (
@@ -283,6 +298,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     height: 28,
     padding: 0,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+  },
+  eyeButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   switchButton: {
     paddingVertical: 8,
